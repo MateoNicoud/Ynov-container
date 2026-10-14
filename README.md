@@ -15,7 +15,7 @@ L'application est un mur de post-its : chaque visiteur colle un message coloré,
 
 ## 2. Architecture
 
-![Schéma d'architecture](/doc/architecture.png)
+![Schéma d'architecture](postit-wall/doc/architecture.png)
 
 Le trajet d'une requête :
 
