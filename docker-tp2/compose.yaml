@@ -1,0 +1,37 @@
+services:
+  wordpress:
+    image: wordpress:php8.3-apache
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - wpnet
+
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - wpnet
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+
+networks:
+  wpnet:
+
+volumes:
+  dbdata:
