@@ -1,6 +1,6 @@
 # Références
 
-Liens vérifiés le 14 octobre 2026. Les TP ont été testés avec `openbao/openbao:2.7.1`, `hashicorp/vault:2.1.2`, Docker 29.8 et Docker Compose 5.5.
+Liens vérifiés le 14 octobre 2026. Les TP 1 à 8 ont été testés avec `openbao/openbao:2.7.1`, `hashicorp/vault:2.1.2`, Docker 29.8, Docker Compose 5.5, Go 1.27.2, Trivy 0.74, minikube 1.39.0 (Kubernetes 1.37.0), Helm 4.3.0, Envoy Gateway 1.9.2 et cert-manager 1.21.2. Le TP 9 (Azure) a été validé hors d'Azure : rendu Kustomize et validation par l'API server, sans déploiement réel.
 
 ## Docker Compose
 
@@ -47,3 +47,37 @@ Liens vérifiés le 14 octobre 2026. Les TP ont été testés avec `openbao/open
 - [HashiCorp adopte la Business Source License](https://www.hashicorp.com/blog/hashicorp-adopts-business-source-license) (annonce d'août 2023).
 - [FAQ de la licence BSL de HashiCorp](https://www.hashicorp.com/license-faq)
 - [Licence MPL 2.0 d'OpenBao](https://github.com/openbao/openbao/blob/main/LICENSE)
+
+## Image et chaîne d'approvisionnement (TP 3 et 4)
+
+- [Bonnes pratiques Dockerfile](https://docs.docker.com/build/building/best-practices/) : cache, multi-stage, `.dockerignore`.
+- [Images distroless](https://github.com/GoogleContainerTools/distroless) : variantes `static`, `base`, `nonroot`.
+- [Capabilities Linux](https://man7.org/linux/man-pages/man7/capabilities.7.html) et [options de sécurité de Docker](https://docs.docker.com/engine/security/).
+- [Trivy](https://trivy.dev/) et [Syft](https://github.com/anchore/syft).
+- [Limites de téléchargement Docker Hub](https://docs.docker.com/docker-hub/usage/).
+- [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+- [Durcissement de la sécurité de GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) : épinglage par SHA, permissions du jeton.
+- [CVE-2026-33634](https://nvd.nist.gov/vuln/detail/CVE-2026-33634) : détournement des tags de `trivy-action` en mars 2026.
+- [Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference).
+
+## Kubernetes (TP 5 à 8)
+
+- [minikube : démarrage](https://minikube.sigs.k8s.io/docs/start/), [NetworkPolicy avec Calico](https://minikube.sigs.k8s.io/docs/handbook/network_policy/), [accès aux services](https://minikube.sigs.k8s.io/docs/handbook/accessing/).
+- [Concepts Kubernetes](https://kubernetes.io/docs/concepts/) : Pods, Deployments, Services, stockage, configuration.
+- [Sondes liveness, readiness, startup](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/).
+- [Ressources et QoS](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/), [HPA](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
+- [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/), [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+- [Kustomize](https://kubectl.docs.kubernetes.io/references/kustomize/).
+- [Fin d'ingress-nginx](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/) et [Gateway API](https://gateway-api.sigs.k8s.io/).
+- [Envoy Gateway](https://gateway.envoyproxy.io/docs/), [cert-manager avec Gateway API](https://cert-manager.io/docs/usage/gateway/).
+- [Chart Helm OpenBao](https://github.com/openbao/openbao-helm), [authentification Kubernetes d'OpenBao](https://openbao.org/docs/auth/kubernetes/).
+
+## Azure (TP 9)
+
+- [Azure for Students](https://learn.microsoft.com/en-us/azure/education-hub/about-azure-for-students) et [abonnement désactivé](https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/azurestudents-subscription-disabled).
+- [AKS : tiers Free et Standard](https://learn.microsoft.com/en-us/azure/aks/free-standard-pricing-tiers), [quotas et tailles de VM](https://learn.microsoft.com/en-us/azure/aks/quotas-skus-regions), [arrêt et démarrage](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster).
+- [ACR et AKS](https://learn.microsoft.com/en-us/azure/aks/cluster-container-registry-integration).
+- [Workload identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster), [driver CSI Key Vault](https://learn.microsoft.com/en-us/azure/aks/csi-secrets-store-driver).
+- [Azure Database for MySQL Flexible Server](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/quickstart-create-server-cli).
+- [Application routing (NGINX, fin de support)](https://learn.microsoft.com/en-us/azure/aks/app-routing) et [sa variante Gateway API](https://learn.microsoft.com/en-us/azure/aks/app-routing-gateway-api).
+- [GitHub Actions vers Azure en OIDC](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect).

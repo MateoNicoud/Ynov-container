@@ -1,0 +1,6 @@
+# Tout ce qui n'est pas nécessaire au build reste hors du contexte envoyé au daemon.
+*
+!go.mod
+!go.sum
+!*.go
+*_test.go

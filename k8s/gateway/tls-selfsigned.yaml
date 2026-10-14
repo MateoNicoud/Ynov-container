@@ -1,0 +1,8 @@
+# TLS de lab : cert-manager signe lui-même le certificat (le navigateur affichera un avertissement).
+# Sur Azure (TP 9), seul l'émetteur change : Let's Encrypt au lieu de selfSigned.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}

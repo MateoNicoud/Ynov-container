@@ -1,0 +1,42 @@
+# L'injecteur (webhook d'admission) lit ces annotations et ajoute au Pod un conteneur
+# OpenBao Agent qui s'authentifie, écrit les identifiants dans /vault/secrets/ et les renouvelle.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: api
+        vault.hashicorp.com/agent-inject-secret-db_user: database/creds/api
+        vault.hashicorp.com/agent-inject-template-db_user: |
+          {{ with secret "database/creds/api" }}{{ .Data.username }}{{ end }}
+        vault.hashicorp.com/agent-inject-secret-db_password: database/creds/api
+        vault.hashicorp.com/agent-inject-template-db_password: |
+          {{ with secret "database/creds/api" }}{{ .Data.password }}{{ end }}
+        # Par défaut l'agent demande 250m de CPU : le HPA (calculé sur la somme des requests
+        # du Pod) ne verrait presque plus la charge de l'API. On le réduit.
+        vault.hashicorp.com/agent-requests-cpu: 10m
+        vault.hashicorp.com/agent-limits-cpu: 100m
+        vault.hashicorp.com/agent-requests-mem: 16Mi
+        vault.hashicorp.com/agent-limits-mem: 64Mi
+    spec:
+      # L'agent a besoin du token du ServiceAccount pour s'authentifier.
+      automountServiceAccountToken: true
+      containers:
+        - name: api
+          env:
+            - name: DB_USER
+              $patch: delete
+            - name: DB_PASSWORD_FILE
+              value: /vault/secrets/db_password
+            - name: DB_USER_FILE
+              value: /vault/secrets/db_user
+          volumeMounts:
+            - name: db-secret
+              $patch: delete
+      volumes:
+        - name: db-secret
+          $patch: delete

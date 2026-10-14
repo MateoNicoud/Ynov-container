@@ -1,0 +1,31 @@
+# Compte "dev" pour déboguer : lire les Pods, leurs logs et les Deployments,
+# mais pas les Secrets, et rien modifier. Un Role est limité à son namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lecture-debug
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, endpoints, configmaps, events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, replicasets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-lecture-debug
+subjects:
+  - kind: ServiceAccount
+    name: dev
+    namespace: wordpress
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lecture-debug

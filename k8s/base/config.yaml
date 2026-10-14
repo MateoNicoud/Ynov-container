@@ -1,0 +1,9 @@
+# Configuration non secrète, partagée par les trois applications.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-config
+data:
+  DB_HOST: mariadb:3306
+  DB_NAME: wordpress
+  DB_USER: wordpress

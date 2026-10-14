@@ -1,0 +1,8 @@
+# Variante Gateway API de l'entrée (TP 6, partie 6), à la place de minikube/ingress.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wordpress
+resources:
+  - gatewayclass.yaml
+  - gateway.yaml
+  - tls-selfsigned.yaml

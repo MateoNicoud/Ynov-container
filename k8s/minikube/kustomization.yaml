@@ -1,0 +1,11 @@
+# Le lab : la base + un Ingress, et l'image de l'API chargée avec "minikube image load".
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wordpress
+resources:
+  - ../base
+  - ingress.yaml
+images:
+  - name: tp-api
+    newName: tp-api
+    newTag: dev

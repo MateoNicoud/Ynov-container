@@ -1,0 +1,48 @@
+# TP 3 : l'API maison dans la stack. Nécessite openbao.compose.yml (identifiants dynamiques).
+services:
+  api:
+    build:
+      context: ./app
+      args:
+        VERSION: ${API_VERSION:-dev}
+    image: ${API_IMAGE:-tp-api}:${API_VERSION:-dev}
+    environment:
+      DB_HOST: mariadb:3306
+      DB_NAME: ${DB_NAME}
+      DB_USER_FILE: /run/bao-api/db_user
+      DB_PASSWORD_FILE: /run/bao-api/db_password
+    volumes:
+      - bao_api:/run/bao-api:ro
+    ports:
+      - "127.0.0.1:${API_PORT:-8081}:8080"
+    networks:
+      - internal
+      - public
+    # Durcissement (checklist sécu du cours)
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
+    depends_on:
+      bao-agent:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+
+  # Outil de debug, démarré seulement avec : docker compose --profile debug up -d
+  adminer:
+    image: adminer:${ADMINER_VERSION:-5.4.1}
+    profiles: [debug]
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8082}:8080"
+    networks:
+      - internal
+      - public

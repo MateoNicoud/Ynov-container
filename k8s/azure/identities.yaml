@@ -1,0 +1,9 @@
+# L'annotation relie le ServiceAccount Kubernetes à l'identité managée Azure.
+# Côté Azure, un "federated credential" fait confiance au token de ce ServiceAccount précis.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wordpress
+  annotations:
+    azure.workload.identity/client-id: IDENTITY_CLIENT_ID
+automountServiceAccountToken: false

@@ -1,0 +1,122 @@
+# MariaDB : un StatefulSet plutôt qu'un Deployment, pour une identité stable (mariadb-0)
+# et un volume attaché à cette identité, qui survit à la suppression du Pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+spec:
+  clusterIP: None          # Service "headless" : le DNS renvoie l'IP du Pod, pas d'IP virtuelle
+  selector:
+    app: mariadb
+  ports:
+    - name: mysql
+      port: 3306
+---
+# Script exécuté au premier démarrage seulement (volume vide) : compte en lecture seule pour l'API.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init
+data:
+  01-api-user.sh: |
+    docker_process_sql --database=mysql <<-EOSQL
+    	CREATE USER 'api'@'%' IDENTIFIED BY '$(docker_sql_escape_string_literal "${API_PASSWORD}")';
+    	GRANT SELECT ON \`${MARIADB_DATABASE}\`.* TO 'api'@'%';
+    EOSQL
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+spec:
+  serviceName: mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      automountServiceAccountToken: false   # MariaDB n'appelle pas l'API Kubernetes
+      securityContext:
+        runAsUser: 999                       # utilisateur mysql de l'image
+        runAsGroup: 999
+        runAsNonRoot: true
+        fsGroup: 999                         # le volume appartient au groupe 999, MariaDB peut écrire
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mariadb
+          image: mariadb:13.0
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: wordpress-config, key: DB_NAME }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: wordpress-config, key: DB_USER }
+            # Les mots de passe viennent du Secret "db", créé à la main (jamais dans Git).
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db, key: root-password }
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db, key: wordpress-password }
+            - name: API_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db, key: api-password }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: run
+              mountPath: /run/mysqld
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true      # seuls les volumes ci-dessus sont inscriptibles
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          # startupProbe : laisse jusqu'à 2 min au premier démarrage (création des tables système).
+          startupProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [healthcheck.sh, --connect]
+            periodSeconds: 20
+            failureThreshold: 3
+      volumes:
+        - name: init
+          configMap:
+            name: mariadb-init
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+  # Un PVC par réplica (data-mariadb-0), créé automatiquement et conservé si le StatefulSet est supprimé.
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+spec:
+  template:
+    spec:
+      serviceAccountName: wordpress
+      containers:
+        - name: wordpress
+          env:
+            # Azure Database for MySQL refuse les connexions sans TLS.
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('MYSQL_CLIENT_FLAGS', MYSQLI_CLIENT_SSL);
+                // Derrière la Gateway, la requête arrive en HTTP : on dit à WordPress que le client est en HTTPS.
+                if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') { $_SERVER['HTTPS'] = 'on'; }
+      volumes:
+        - name: db-secret
+          secret: null          # remplace la source "Secret Kubernetes"...
+          csi:                  # ...par Key Vault, via le driver CSI
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: wordpress-db

@@ -1,0 +1,13 @@
+# Ouvre des PR quand une image de base, un module Go ou une action a une nouvelle version.
+# Sans ça, épingler par SHA ou par digest fige aussi les failles.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /app
+    schedule: { interval: weekly }
+  - package-ecosystem: gomod
+    directory: /app
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

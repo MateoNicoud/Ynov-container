@@ -1,0 +1,40 @@
+# TP 5 : un Deployment de 3 réplicas et le Service qui les regroupe.
+# whoami répond avec le nom du Pod qui a traité la requête : pratique pour voir la répartition.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+  labels:
+    app: whoami
+spec:
+  replicas: 3                     # état désiré : le contrôleur maintient 3 Pods
+  selector:
+    matchLabels:
+      app: whoami                 # les Pods gérés sont ceux qui portent ce label...
+  template:                       # ...et voici le modèle utilisé pour les créer
+    metadata:
+      labels:
+        app: whoami
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.11.0
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 32Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+spec:
+  type: ClusterIP                 # IP virtuelle joignable uniquement depuis le cluster
+  selector:
+    app: whoami                   # doit correspondre aux labels des Pods
+  ports:
+    - name: http
+      port: 80                    # port du Service
+      targetPort: http            # port nommé du conteneur

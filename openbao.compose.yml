@@ -1,0 +1,121 @@
+services:
+  openbao:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    command: server
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./openbao/config.hcl:/openbao/config/config.hcl:ro
+      - bao_data:/openbao/file
+      - bao_logs:/openbao/logs
+    ports:
+      - "127.0.0.1:${BAO_PORT}:8200"
+    networks:
+      - secrets
+      - internal   # pour atteindre mariadb:3306 (moteur database)
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 1m
+
+  # Init, descellement et configuration d'OpenBao, rejoués à chaque démarrage.
+  bao-init:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    user: root
+    entrypoint: ["/bootstrap.sh"]
+    command: ["init"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+    volumes:
+      - ./openbao/bootstrap.sh:/bootstrap.sh:ro
+      - bao_keys:/bao-keys
+      - bao_agent:/bao-agent
+      - bao_mariadb:/run/mariadb
+    networks:
+      - secrets
+    depends_on:
+      openbao:
+        condition: service_started
+
+  # Branche le moteur database sur MariaDB, une fois qu'elle répond.
+  bao-db-init:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    user: root
+    entrypoint: ["/bootstrap.sh"]
+    command: ["db"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./openbao/bootstrap.sh:/bootstrap.sh:ro
+      - bao_keys:/bao-keys:ro
+    networks:
+      - secrets
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # Demande des identifiants MariaDB à OpenBao, les renouvelle,
+  # et en redemande des neufs avant l'expiration du bail.
+  bao-agent:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    user: root
+    entrypoint: ["bao"]   # l'entrypoint de l'image repasserait en utilisateur openbao
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    volumes:
+      - ./openbao/agent/agent.hcl:/openbao/agent/agent.hcl:ro
+      - bao_agent:/bao-agent:ro
+      - bao_secrets:/run/bao
+      - bao_api:/run/bao-api
+    networks:
+      - secrets
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/bao/db_password && test -s /run/bao-api/db_password"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    depends_on:
+      bao-db-init:
+        condition: service_completed_successfully
+
+  # !reset retire les variables héritées de docker-compose.yml.
+  # Ne pas laisser un formateur YAML supprimer ces lignes.
+  mariadb:
+    environment:
+      MARIADB_USER: !reset null
+      MARIADB_PASSWORD: !reset null
+      MARIADB_ROOT_PASSWORD: !reset null
+      MARIADB_ROOT_PASSWORD_FILE: /run/mariadb/root_password
+      MARIADB_ROOT_HOST: localhost   # pas de root@'%' : seul le compte bao est joignable par le réseau
+    volumes:
+      - bao_mariadb:/run/mariadb:ro
+      - ./openbao/mariadb-init:/docker-entrypoint-initdb.d:ro
+    depends_on:
+      bao-init:
+        condition: service_completed_successfully
+
+  wordpress:
+    environment:
+      WORDPRESS_DB_USER: !reset null
+      WORDPRESS_DB_PASSWORD: !reset null
+      WORDPRESS_DB_USER_FILE: /run/bao/db_user
+      WORDPRESS_DB_PASSWORD_FILE: /run/bao/db_password
+    volumes:
+      - bao_secrets:/run/bao:ro
+    depends_on:
+      bao-agent:
+        condition: service_healthy
+
+networks:
+  secrets:
+
+volumes:
+  bao_data:
+  bao_logs:
+  bao_keys:
+  bao_agent:
+  bao_mariadb:
+  bao_secrets:
+  bao_api:

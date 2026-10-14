@@ -1,0 +1,4 @@
+.env
+# sauvegardes et SBOM produits pendant les TP
+*.sql
+sbom*.json

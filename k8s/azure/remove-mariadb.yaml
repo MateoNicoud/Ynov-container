@@ -1,0 +1,25 @@
+# En production, la base est un service managé (Azure Database for MySQL) :
+# on retire tout ce qui concerne le MariaDB du cluster.
+$patch: delete
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+---
+$patch: delete
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+---
+$patch: delete
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init
+---
+$patch: delete
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mariadb-from-apps

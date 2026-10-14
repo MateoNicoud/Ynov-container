@@ -1,0 +1,12 @@
+# kubectl apply -k k8s/base : applique tous ces fichiers dans le namespace wordpress.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wordpress
+resources:
+  - namespace.yaml
+  - config.yaml
+  - mariadb.yaml
+  - wordpress.yaml
+  - api.yaml
+  - network-policies.yaml
+  - rbac.yaml

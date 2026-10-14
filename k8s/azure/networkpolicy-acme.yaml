@@ -1,0 +1,18 @@
+# Pendant le challenge HTTP-01, cert-manager lance dans ce namespace un petit serveur (port 8089)
+# que Let's Encrypt doit joindre à travers la Gateway. default-deny-ingress (TP 7) le bloquerait.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: acme-solver-from-gateway
+spec:
+  podSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - port: 8089

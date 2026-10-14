@@ -1,0 +1,117 @@
+# TP 4 : tester, construire, scanner, publier l'image de l'API.
+#
+# Chaque étape est une barrière : si elle échoue, la suite ne tourne pas.
+# Les actions tierces sont épinglées par SHA de commit (voir TP 4, partie 5) :
+# un tag peut être déplacé par un attaquant, un SHA non.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+
+# Par défaut, le token du workflow ne peut que lire le dépôt.
+permissions:
+  contents: read
+
+env:
+  # metadata-action passe le nom en minuscules, comme l'exige GHCR.
+  IMAGE: ghcr.io/${{ github.repository_owner }}/tp-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Même image Go que le Dockerfile : pas d'écart entre le test et le build.
+      - name: gofmt, vet, tests
+        run: |
+          docker run --rm -v "$PWD/app:/src" -w /src golang:1.27-alpine \
+            sh -c 'test -z "$(gofmt -l .)" && go vet ./... && go test ./...'
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # pousser sur GHCR avec GITHUB_TOKEN
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Calcule les tags :
+      #   push sur main     -> sha-<7 car.>
+      #   tag git v1.2.3    -> 1.2.3, 1.2 et sha-<7 car.>
+      #   pull request      -> pr-<numéro> (jamais poussé)
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=pr
+
+      # 1er build : chargé dans le Docker local du runner pour le scanner, pas poussé.
+      - name: build (local)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: app
+          load: true
+          tags: tp-api:scan
+          build-args: VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Barrière sécurité : échec si une CVE HIGH ou CRITICAL a un correctif disponible.
+      - name: scan Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: tp-api:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Inventaire des composants de l'image, gardé comme artefact du job.
+      - name: SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: tp-api:scan
+          format: spdx-json
+          artifact-name: sbom-tp-api.spdx.json
+
+      - name: login GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2e build : tout vient du cache, il ne fait que pousser.
+      - name: push
+        if: github.event_name != 'pull_request'
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: app
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+
+      - name: résumé
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "### Image publiée"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo "digest: ${{ steps.push.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

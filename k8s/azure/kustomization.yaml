@@ -1,0 +1,55 @@
+# Production Azure (TP 9) : la base commune, moins MariaDB, plus Key Vault, Gateway et TLS.
+# Rendu : kubectl kustomize k8s/azure    Application : kubectl apply -k k8s/azure
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wordpress
+resources:
+  - ../base
+  - identities.yaml
+  - secretproviderclass.yaml
+  - gateway.yaml
+  - networkpolicy-acme.yaml
+patches:
+  - path: remove-mariadb.yaml
+  - path: wordpress-patch.yaml
+  - path: api-patch.yaml
+  - path: api-sa-patch.yaml
+
+# Les valeurs de params.env deviennent un ConfigMap, puis sont recopiées dans les manifests.
+configMapGenerator:
+  - name: azure-params
+    envs: [params.env]
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.MYSQL_HOST }
+    targets:
+      - select: { kind: ConfigMap, name: wordpress-config }
+        fieldPaths: [data.DB_HOST]
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.IDENTITY_CLIENT_ID }
+    targets:
+      - select: { kind: SecretProviderClass }
+        fieldPaths: [spec.parameters.clientID]
+      - select: { kind: ServiceAccount, name: wordpress }
+        fieldPaths: ["metadata.annotations.[azure.workload.identity/client-id]"]
+      - select: { kind: ServiceAccount, name: api }
+        fieldPaths: ["metadata.annotations.[azure.workload.identity/client-id]"]
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.KEYVAULT_NAME }
+    targets:
+      - select: { kind: SecretProviderClass }
+        fieldPaths: [spec.parameters.keyvaultName]
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.TENANT_ID }
+    targets:
+      - select: { kind: SecretProviderClass }
+        fieldPaths: [spec.parameters.tenantId]
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.DNS_LABEL }
+    targets:
+      - select: { kind: Gateway, name: web }
+        fieldPaths: ["spec.infrastructure.annotations.[service.beta.kubernetes.io/azure-dns-label-name]"]
+  - source: { kind: ConfigMap, name: azure-params, fieldPath: data.PUBLIC_HOST }
+    targets:
+      - select: { kind: Gateway, name: web }
+        fieldPaths: [spec.listeners.1.hostname]
+      - select: { kind: HTTPRoute }
+        fieldPaths: [spec.hostnames.0]

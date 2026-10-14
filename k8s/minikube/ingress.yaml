@@ -1,0 +1,25 @@
+# Une seule entrée HTTP pour le cluster, routée par nom d'hôte.
+# Contrôleur : addon "ingress" de minikube (ingress-nginx).
+# *.localhost pointe toujours sur 127.0.0.1 (navigateurs et curl) : pas de /etc/hosts à modifier.
+# Accès : kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: wordpress.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: wordpress, port: { name: http } }
+    - host: api.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: api, port: { name: http } }
