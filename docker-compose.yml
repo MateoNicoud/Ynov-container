@@ -1,33 +1,34 @@
 services:
   wordpress:
-    image: wordpress:7.1
+    image: wordpress:${WORDPRESS_VERSION}
     ports:
-      - 80:80
+      - "${WORDPRESS_PORT}:80"
     environment:
-      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: ${DB_NAME}
       WORDPRESS_DB_USER: ${DB_USER}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
     networks:
-      - default
-      - db
+      - internal
+      - public
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: 512M
     depends_on:
-      db:
+      mariadb:
         condition: service_healthy
 
-  db:
-    image: mariadb:13.0
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
     environment:
-      MARIADB_DATABASE: wordpress
+      MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_RANDOM_ROOT_PASSWORD: 1
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes:
-      - db:/var/lib/mysql
+      - db_data:/var/lib/mysql
     healthcheck:
       test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
       start_period: 1m
@@ -36,7 +37,7 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - db
+      - internal
     deploy:
       resources:
         limits:
@@ -44,8 +45,9 @@ services:
           memory: 512M
 
 networks:
-  db:
+  internal:
     internal: true
+  public:
 
 volumes:
-  db:
+  db_data:
