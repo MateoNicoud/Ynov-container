@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mur de post-its</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #3b2f2a; color: #fff; min-height: 100vh; }
+  header { text-align: center; padding: 24px 16px 8px; }
+  h1 { margin: 0; font-size: 28px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 16px; max-width: 760px; margin: 0 auto; }
+  input { padding: 10px; border-radius: 6px; border: 0; font-size: 15px; }
+  #author { width: 140px; }
+  #message { flex: 1; min-width: 200px; }
+  button.send { padding: 10px 18px; border: 0; border-radius: 6px; background: #f2b134; font-weight: 600; cursor: pointer; }
+  .colors { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 24px; height: 24px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; }
+  .dot.sel { border-color: #fff; }
+  .yellow { background: #ffe66d; } .pink { background: #ff9ecd; }
+  .blue { background: #8ecbff; } .green { background: #a8e6a1; }
+  #wall { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; padding: 20px; }
+  .note { position: relative; width: 190px; min-height: 150px; padding: 14px; color: #2b2b2b; box-shadow: 3px 4px 8px rgba(0,0,0,.4); }
+  .note p { margin: 0 0 14px; font-size: 16px; word-wrap: break-word; }
+  .note small { position: absolute; bottom: 8px; left: 14px; opacity: .65; }
+  .note .del { position: absolute; top: 4px; right: 6px; border: 0; background: none; font-size: 18px; cursor: pointer; opacity: .5; }
+  footer { text-align: center; padding: 24px; font-size: 13px; opacity: .7; }
+</style>
+</head>
+<body>
+<header><h1>Mur de post-its</h1></header>
+<form id="form">
+  <input id="author" maxlength="30" placeholder="Ton prénom">
+  <input id="message" maxlength="140" placeholder="Écris ton message..." required>
+  <div class="colors" id="colors"></div>
+  <button class="send" type="submit">Coller</button>
+</form>
+<div id="wall"></div>
+<footer id="info">...</footer>
+<script>
+  const COLORS = ['yellow', 'pink', 'blue', 'green'];
+  let color = 'yellow';
+
+  const colorsEl = document.getElementById('colors');
+  COLORS.forEach((c) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dot ' + c + (c === color ? ' sel' : '');
+    b.setAttribute('aria-label', c);
+    b.onclick = () => {
+      color = c;
+      colorsEl.querySelectorAll('.dot').forEach((d) => d.classList.toggle('sel', d === b));
+    };
+    colorsEl.appendChild(b);
+  });
+
+  async function load() {
+    const [notes, info] = await Promise.all([
+      fetch('/api/notes').then((r) => r.json()),
+      fetch('/api/info').then((r) => r.json()),
+    ]);
+    const wall = document.getElementById('wall');
+    wall.replaceChildren();
+    notes.forEach((n) => {
+      const el = document.createElement('div');
+      el.className = 'note ' + n.color;
+      el.style.transform = 'rotate(' + ((n.id % 7) - 3) * 1.2 + 'deg)';
+      const p = document.createElement('p');
+      p.textContent = n.message;
+      const s = document.createElement('small');
+      s.textContent = '- ' + n.author;
+      const d = document.createElement('button');
+      d.className = 'del';
+      d.textContent = '×';
+      d.setAttribute('aria-label', 'Supprimer');
+      d.onclick = async () => { await fetch('/api/notes/' + n.id, { method: 'DELETE' }); load(); };
+      el.append(d, p, s);
+      wall.appendChild(el);
+    });
+    document.getElementById('info').textContent =
+      info.total + ' post-it(s) en base · API : ' + info.api_host + ' · BDD : ' + info.db_ip;
+  }
+
+  document.getElementById('form').onsubmit = async (e) => {
+    e.preventDefault();
+    const message = document.getElementById('message');
+    await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author: document.getElementById('author').value, message: message.value, color }),
+    });
+    message.value = '';
+    load();
+  };
+
+  load();
+  setInterval(load, 5000);
+</script>
+</body>
+</html>
