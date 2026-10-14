@@ -1,0 +1,26 @@
+services:
+  vault:
+    image: hashicorp/vault:${VAULT_VERSION}
+    command: server -dev
+    cap_add: [IPC_LOCK]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN}
+      VAULT_ADDR: http://127.0.0.1:8200
+    ports:
+      - "127.0.0.1:${VAULT_PORT}:8200"
+    volumes:
+      - vault_logs:/vault/logs
+    networks:
+      - secrets
+      - internal
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  secrets:
+
+volumes:
+  vault_logs:
