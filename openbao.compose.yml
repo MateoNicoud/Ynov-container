@@ -1,0 +1,69 @@
+services:
+  openbao:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    command: server
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+    volumes:
+      - ./openbao/config.hcl:/openbao/config/config.hcl:ro
+      - bao_data:/openbao/file
+    ports:
+      - "127.0.0.1:${BAO_PORT}:8200"
+    networks:
+      - secrets
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  secrets-init:
+    image: openbao/openbao:${OPENBAO_VERSION}
+    entrypoint: ["/bin/sh", "-c"]
+    user: root
+    command:
+      - |
+        set -e
+        BAO_TOKEN=$$(bao write -field=token auth/approle/login role_id="$$ROLE_ID" secret_id="$$SECRET_ID")
+        export BAO_TOKEN
+        bao kv get -field=password secret/wordpress/db > /run/bao/db_password
+        bao kv get -field=root_password secret/wordpress/db > /run/bao/db_root_password
+        chmod 0444 /run/bao/*
+        echo "secrets écrits"
+    environment:
+      BAO_ADDR: http://openbao:8200
+      ROLE_ID: ${BAO_ROLE_ID}
+      SECRET_ID: ${BAO_SECRET_ID}
+    volumes:
+      - bao_secrets:/run/bao
+    networks:
+      - secrets
+    depends_on:
+      openbao:
+        condition: service_healthy
+
+  mariadb:
+    environment:
+      MARIADB_PASSWORD: !reset null
+      MARIADB_ROOT_PASSWORD: !reset null
+      MARIADB_PASSWORD_FILE: /run/bao/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/bao/db_root_password
+    volumes:
+      - bao_secrets:/run/bao:ro
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+
+  wordpress:
+    environment:
+      WORDPRESS_DB_PASSWORD: !reset null
+      WORDPRESS_DB_PASSWORD_FILE: /run/bao/db_password
+    volumes:
+      - bao_secrets:/run/bao:ro
+
+networks:
+  secrets:
+
+volumes:
+  bao_secrets:
+  bao_data:

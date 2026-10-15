@@ -1,0 +1,319 @@
+TP Ynov Docker - WordPress + MariaDB + OpenBao
+================================================
+
+Stack : WordPress (port 80) + MariaDB (réseau interne) + OpenBao (gestion des secrets).
+Les mots de passe de la base sont stockés dans OpenBao. Un conteneur "secrets-init"
+les récupère au démarrage (authentification AppRole) et les écrit dans des fichiers
+que MariaDB et WordPress lisent via les variables *_FILE.
+
+Toutes les commandes se lancent depuis le dossier du projet, dans PowerShell.
+
+
+------------------------------------------------
+1. FICHIERS DU PROJET
+------------------------------------------------
+
+docker-compose.yml          stack de base : WordPress + MariaDB
+openbao.compose.yml         ajoute OpenBao + secrets-init, branche la stack sur OpenBao
+openbao/config.hcl          configuration du serveur OpenBao (stockage raft, port 8200, UI)
+openbao/wordpress-read.hcl  policy : lecture seule sur secret/data/wordpress/*
+openbao/init-keys.json      clés de descellement + token root (généré à l'installation, NE PAS COMMITER)
+.env                        configuration locale (NE PAS COMMITER)
+.env.example                modèle du .env
+
+
+------------------------------------------------
+2. DEPLOIEMENT FROM SCRATCH
+------------------------------------------------
+
+Prérequis : Docker Desktop lancé, Docker Compose 2.24 ou plus.
+
+Si une ancienne installation existe et qu'on veut repartir de zéro :
+
+  docker compose down -v
+      supprime conteneurs, réseaux ET volumes (base WordPress + données OpenBao)
+
+  Remove-Item openbao\init-keys.json
+      supprime les anciennes clés, devenues inutiles
+
+
+Etape 1 - Créer le .env
+
+  Copier .env.example en .env puis mettre ce contenu (aucun mot de passe) :
+
+    WORDPRESS_VERSION=6.8-apache
+    MARIADB_VERSION=11.4
+    WORDPRESS_PORT=80
+    DB_NAME=wordpress
+    DB_USER=wordpress
+    COMPOSE_FILE=docker-compose.yml;openbao.compose.yml
+    OPENBAO_VERSION=2.7.1
+    BAO_PORT=8200
+    BAO_ROLE_ID=
+    BAO_SECRET_ID=
+
+  Sous Windows le séparateur de COMPOSE_FILE est ";" (":" sous Linux/Mac).
+  BAO_ROLE_ID et BAO_SECRET_ID sont remplis à l'étape 6.
+
+
+Etape 2 - Démarrer OpenBao seul
+
+  docker compose up -d openbao
+      démarre uniquement le conteneur OpenBao
+
+  docker compose exec openbao bao status
+      doit afficher "Initialized false" et "Sealed true"
+      (le conteneur reste unhealthy tant qu'il est scellé, c'est normal)
+
+
+Etape 3 - Initialiser OpenBao (une seule fois)
+
+  docker compose exec -T openbao bao operator init -key-shares=3 -key-threshold=2 -format=json | Set-Content openbao\init-keys.json -Encoding ascii
+      génère 3 clés de descellement (2 suffisent) et le token root,
+      et les enregistre dans openbao\init-keys.json.
+      Elles ne seront plus jamais affichées : garder ce fichier.
+
+
+Etape 4 - Desceller
+
+  $KEYS = (Get-Content openbao\init-keys.json -Raw | ConvertFrom-Json)
+  $ROOT = $KEYS.root_token
+      charge les clés et le token root dans des variables PowerShell
+
+  docker compose exec openbao bao operator unseal $KEYS.unseal_keys_b64[0]
+  docker compose exec openbao bao operator unseal $KEYS.unseal_keys_b64[1]
+      descelle avec 2 clés. Après la 2e : "Sealed false", OpenBao passe healthy.
+
+
+Etape 5 - Configurer OpenBao
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao secrets enable -path=secret -version=2 kv
+      active le moteur de secrets clé/valeur version 2 sur secret/
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao kv put secret/wordpress/db user=wordpress password=MonMdp root_password=MonMdpRoot
+      enregistre les mots de passe de la base (les choisir ici)
+
+  docker compose cp openbao\wordpress-read.hcl openbao:/tmp/wordpress-read.hcl
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao policy write wordpress-read /tmp/wordpress-read.hcl
+      copie puis charge la policy lecture seule
+      (ne pas passer le fichier par un pipe PowerShell : erreur "illegal char")
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao auth enable approle
+      active l'authentification AppRole (identité pour une machine)
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao write auth/approle/role/wordpress token_policies=wordpress-read token_ttl=10m secret_id_ttl=24h
+      crée le rôle "wordpress" : tokens de 10 min, lecture seule, secret_id valable 24 h
+
+
+Etape 6 - Récupérer les identifiants AppRole
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao read -field=role_id auth/approle/role/wordpress/role-id
+      affiche le role_id -> le copier dans BAO_ROLE_ID du .env
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao write -f -field=secret_id auth/approle/role/wordpress/secret-id
+      génère un secret_id -> le copier dans BAO_SECRET_ID du .env
+
+
+Etape 7 - Lancer toute la stack
+
+  docker compose up -d
+      ordre de démarrage : openbao (healthy) -> secrets-init (termine) -> mariadb (healthy) -> wordpress
+
+  docker compose ps -a
+      résultat attendu :
+        openbao       Up (healthy)
+        secrets-init  Exited (0)
+        mariadb       Up (healthy)
+        wordpress     Up
+
+
+Etape 8 - Vérifier
+
+  docker compose logs secrets-init
+      doit afficher "secrets écrits"
+
+  docker compose exec wordpress env | Select-String PASSWORD
+      ne doit afficher que WORDPRESS_DB_PASSWORD_FILE (plus aucun mot de passe en clair)
+
+  Ouvrir http://localhost -> page d'installation de WordPress.
+
+
+Les avertissements "The DB_PASSWORD variable is not set" sont normaux :
+docker-compose.yml référence encore ces variables, openbao.compose.yml les supprime (!reset).
+
+
+------------------------------------------------
+3. APRES UN REDEMARRAGE DU PC / DE DOCKER
+------------------------------------------------
+
+OpenBao redémarre toujours scellé. Sans descellement, il reste unhealthy
+et la stack ne démarre pas ("dependency openbao failed to start").
+
+  docker compose up -d openbao
+  $KEYS = (Get-Content openbao\init-keys.json -Raw | ConvertFrom-Json)
+  $ROOT = $KEYS.root_token
+  docker compose exec openbao bao operator unseal $KEYS.unseal_keys_b64[0]
+  docker compose exec openbao bao operator unseal $KEYS.unseal_keys_b64[1]
+  docker compose up -d
+
+
+------------------------------------------------
+4. SECRET_ID EXPIRE (apres 24 h)
+------------------------------------------------
+
+Symptôme : secrets-init en "Exited (2)" avec "403 permission denied" dans ses logs.
+
+  docker compose exec -e BAO_TOKEN=$ROOT openbao bao write -f -field=secret_id auth/approle/role/wordpress/secret-id
+      génère un nouveau secret_id -> le mettre dans BAO_SECRET_ID du .env
+
+  docker compose up -d
+      relance secrets-init avec le nouveau secret_id
+
+
+------------------------------------------------
+5. COMMANDES DOCKER COMPOSE
+------------------------------------------------
+
+docker compose up -d                       démarre ou met à jour la stack en arrière-plan
+docker compose up -d openbao               démarre un seul service
+docker compose up -d --force-recreate secrets-init
+                                           relance secrets-init (relit les secrets)
+docker compose ps -a                       état de tous les conteneurs, même arrêtés
+docker compose logs -f                     suit les logs de tous les services (Ctrl+C pour quitter)
+docker compose logs secrets-init           logs d'un service
+docker compose stop                        arrête sans rien supprimer
+docker compose start                       redémarre les conteneurs arrêtés
+docker compose restart openbao             redémarre un service
+docker compose down                        supprime conteneurs et réseaux, garde les volumes
+docker compose down -v                     supprime aussi les volumes (toutes les données)
+docker compose config                      affiche la config fusionnée des 2 fichiers
+docker compose config --quiet              vérifie juste qu'il n'y a pas d'erreur
+docker compose exec <service> sh           ouvre un shell dans un conteneur
+docker compose exec wordpress env          variables d'environnement d'un conteneur
+docker compose cp <fichier> <service>:/tmp/
+                                           copie un fichier dans un conteneur
+
+
+------------------------------------------------
+6. VOLUMES ET RESEAUX
+------------------------------------------------
+
+docker volume ls                           liste les volumes
+docker compose volumes                     volumes du projet uniquement
+docker volume inspect ynov-container_bao_data
+                                           détails d'un volume
+docker network ls                          liste les réseaux
+docker network inspect ynov-container_secrets
+                                           conteneurs branchés sur un réseau et leurs IP
+docker system df -v                        place utilisée par images, conteneurs, volumes
+
+Volumes :
+  db_data      données MariaDB (le site WordPress)
+  bao_data     données OpenBao (chiffrées)
+  bao_secrets  fichiers db_password / db_root_password écrits par secrets-init
+
+Réseaux :
+  internal     WordPress <-> MariaDB, sans accès à Internet
+  public       expose WordPress sur le PC
+  secrets      OpenBao <-> secrets-init
+
+
+------------------------------------------------
+7. COMMANDES OPENBAO
+------------------------------------------------
+
+Prérequis dans chaque nouvelle fenêtre PowerShell :
+  $ROOT = (Get-Content openbao\init-keys.json -Raw | ConvertFrom-Json).root_token
+Sans ça, $ROOT est vide et toutes les commandes répondent 403.
+
+Préfixe des commandes ci-dessous :
+  docker compose exec -e BAO_TOKEN=$ROOT openbao ...
+
+Etat
+  bao status                               scellé ou non, initialisé ou non, type de stockage
+  bao operator unseal <clé>                descelle (à faire avec 2 clés différentes)
+  bao operator seal                        rescelle manuellement
+
+Secrets (KV v2)
+  bao secrets list                         liste les moteurs de secrets
+  bao kv put secret/wordpress/db user=wordpress password=X root_password=Y
+                                           écrit un secret (crée une nouvelle version)
+  bao kv get secret/wordpress/db           lit le secret
+  bao kv get -field=password secret/wordpress/db
+                                           lit un seul champ
+  bao kv get -version=1 secret/wordpress/db
+                                           lit une ancienne version
+  bao kv metadata get secret/wordpress/db  historique des versions
+  bao kv list secret/wordpress             liste les secrets d'un dossier
+  bao kv delete secret/wordpress/db        suppression logique (annulable)
+  bao kv undelete -versions=2 secret/wordpress/db
+                                           annule une suppression
+  bao kv rollback -version=1 secret/wordpress/db
+                                           revient à une version précédente
+  bao kv destroy -versions=1 secret/wordpress/db
+                                           efface définitivement une version
+
+Policies et tokens
+  bao policy list                          liste les policies
+  bao policy read wordpress-read           affiche une policy
+  bao token create -policy=wordpress-read -ttl=1h
+                                           crée un token limité
+  bao token lookup                         infos sur le token courant (policies, durée restante)
+  bao token revoke <token>                 révoque un token
+
+AppRole
+  bao auth list                            méthodes d'authentification activées
+  bao read auth/approle/role/wordpress     configuration du rôle
+  bao read -field=role_id auth/approle/role/wordpress/role-id
+                                           récupère le role_id
+  bao write -f -field=secret_id auth/approle/role/wordpress/secret-id
+                                           génère un nouveau secret_id
+  bao write auth/approle/login role_id=<id> secret_id=<secret>
+                                           teste la connexion AppRole
+
+Interface web : http://127.0.0.1:8200/ui (méthode Token, avec le root_token)
+
+
+------------------------------------------------
+8. MARIADB
+------------------------------------------------
+
+docker compose exec mariadb mariadb -uwordpress -p wordpress
+    connexion avec l'utilisateur wordpress (mot de passe stocké dans OpenBao)
+
+docker compose exec mariadb mariadb -uroot -p
+    connexion root
+
+docker compose exec mariadb ls -l /run/bao
+    affiche les fichiers de secrets écrits par secrets-init
+
+Une fois connecté :
+  SHOW TABLES;
+  SELECT user_login, user_email FROM wp_users;
+  exit
+
+
+------------------------------------------------
+9. DEPANNAGE
+------------------------------------------------
+
+"dependency openbao failed to start / is unhealthy"
+    OpenBao est scellé -> section 3
+
+secrets-init "Exited (2)" + 403
+    secret_id expiré -> section 4
+    ou $ROOT vide / OpenBao scellé
+
+"failed to connect to the docker API"
+    Docker Desktop n'est pas lancé
+
+"COMPOSE_FILE ... is invalid"
+    mauvais séparateur dans le .env : ";" sous Windows
+
+"illegal char" sur bao policy write
+    ne pas utiliser de pipe PowerShell, passer par docker compose cp
+
+WordPress : "Error establishing a database connection"
+    le mot de passe dans OpenBao ne correspond pas à celui de la base existante.
+    MariaDB ne lit son mot de passe qu'au premier démarrage :
+    remettre l'ancien mot de passe dans OpenBao, ou repartir de zéro (down -v).
