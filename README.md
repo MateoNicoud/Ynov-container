@@ -58,7 +58,7 @@ curl http://api.localhost:8080/healthz
 curl http://api.localhost:8080/api/posts
 ```
 
-Les pods attendent le Secret, puis démarrent. Juste après la création du cluster, Traefik peut répondre 404 ou 503 pendant quelques secondes : relancer le `curl`.
+Le Secret est créé à la main après `kubectl apply -f k8s/`, il n'est jamais commité. Les pods l'attendent, puis démarrent. Juste après la création du cluster, Traefik peut répondre 404 ou 503 pendant quelques secondes : relancer le `curl`.
 
 Suppression : `k3d cluster delete tp-finale`.
 
@@ -95,7 +95,7 @@ Suppression : `k3d cluster delete tp-finale`.
 | volume `db_data` | PVC `mariadb-data` |
 | montage `db/init.sql` | ConfigMap `mariadb-init` |
 | réseau `internal` | NetworkPolicy `mariadb` |
-| `healthcheck` | readiness et liveness probes |
+| `healthcheck` | liveness et readiness de l'API, readiness de MariaDB |
 | `depends_on: service_healthy` | readiness de l'API sur `/readyz`, qui teste la base |
 | `read_only`, `cap_drop`, `no-new-privileges` | `securityContext` |
 | (rien) | HPA `api`, ServiceAccount, Role, RoleBinding |

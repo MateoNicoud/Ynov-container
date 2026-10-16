@@ -1,9 +1,3 @@
-// API de démonstration pour les TP 3 à 9.
-//
-// Elle lit les articles publiés de WordPress directement dans MariaDB et expose
-// de quoi pratiquer les sondes Kubernetes (/healthz, /readyz) et l'autoscaling (/burn).
-// Les identifiants se lisent dans des fichiers (DB_USER_FILE, DB_PASSWORD_FILE),
-// relus à chaque requête : ça marche avec les identifiants dynamiques d'OpenBao.
 package main
 
 import (
@@ -11,35 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
 
-// Remplacé au build : go build -ldflags "-X main.version=1.2.3"
 var version = "dev"
-
-// secret lit NAME_FILE s'il est défini, sinon NAME.
-// Même convention que les images officielles mariadb et wordpress.
-func secret(name string) (string, error) {
-	if path := os.Getenv(name + "_FILE"); path != "" {
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return "", err
-		}
-		return strings.TrimRight(string(b), "\r\n"), nil
-	}
-	return os.Getenv(name), nil
-}
 
 func getenv(name, def string) string {
 	if v := os.Getenv(name); v != "" {
@@ -48,49 +25,16 @@ func getenv(name, def string) string {
 	return def
 }
 
-// store garde une connexion MariaDB et la rouvre quand les identifiants changent.
-type store struct {
-	mu   sync.Mutex
-	dsn  string
-	db   *sql.DB
-	host string
-	name string
-	tls  bool
-}
-
-func (s *store) get() (*sql.DB, error) {
-	user, err := secret("DB_USER")
-	if err != nil {
-		return nil, err
-	}
-	pass, err := secret("DB_PASSWORD")
-	if err != nil {
-		return nil, err
-	}
+func openDB() (*sql.DB, error) {
 	cfg := mysql.NewConfig()
-	cfg.User, cfg.Passwd = user, pass
-	cfg.Net, cfg.Addr, cfg.DBName = "tcp", s.host, s.name
+	cfg.User, cfg.Passwd = os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD")
+	cfg.Net, cfg.Addr, cfg.DBName = "tcp", getenv("DB_HOST", "mariadb:3306"), getenv("DB_NAME", "wordpress")
 	cfg.Timeout = 2 * time.Second
-	if s.tls {
-		cfg.TLSConfig = "true" // obligatoire sur Azure Database for MySQL (TP 9)
-	}
-	dsn := cfg.FormatDSN()
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.db != nil && dsn == s.dsn {
-		return s.db, nil
-	}
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
 	}
 	db.SetConnMaxLifetime(time.Minute)
-	if s.db != nil {
-		s.db.Close()
-		slog.Info("identifiants changés, nouvelle connexion", "user", user)
-	}
-	s.db, s.dsn = db, dsn
 	return db, nil
 }
 
@@ -106,7 +50,6 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-// burnDuration borne le paramètre ms de /burn entre 0 et 1000.
 func burnDuration(raw string) time.Duration {
 	ms, err := strconv.Atoi(raw)
 	if err != nil || ms < 0 {
@@ -118,24 +61,18 @@ func burnDuration(raw string) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-func newMux(s *store, prefix string) *http.ServeMux {
+func newMux(db *sql.DB) *http.ServeMux {
 	hostname, _ := os.Hostname()
 	mux := http.NewServeMux()
 
-	// Liveness : le processus répond. Ne touche pas à la base, exprès.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok\n"))
 	})
 
-	// Readiness : la base répond. Sinon le Pod sort du Service.
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
-		db, err := s.get()
-		if err == nil {
-			err = db.PingContext(ctx)
-		}
-		if err != nil {
+		if err := db.PingContext(ctx); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "ko", "error": err.Error()})
 			return
 		}
@@ -147,13 +84,8 @@ func newMux(s *store, prefix string) *http.ServeMux {
 	})
 
 	mux.HandleFunc("GET /api/posts", func(w http.ResponseWriter, r *http.Request) {
-		db, err := s.get()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-			return
-		}
-		rows, err := db.QueryContext(r.Context(), fmt.Sprintf(
-			"SELECT ID, post_title, post_date FROM %sposts WHERE post_status = 'publish' AND post_type = 'post' ORDER BY post_date DESC LIMIT 10", prefix))
+		rows, err := db.QueryContext(r.Context(),
+			"SELECT ID, post_title, post_date FROM wp_posts WHERE post_status = 'publish' AND post_type = 'post' ORDER BY post_date DESC LIMIT 10")
 		if err != nil {
 			writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 			return
@@ -173,13 +105,10 @@ func newMux(s *store, prefix string) *http.ServeMux {
 		writeJSON(w, http.StatusOK, posts)
 	})
 
-	// Consomme du CPU pendant ?ms= millisecondes (100 par défaut, 1000 max), pour le TP HPA.
 	mux.HandleFunc("GET /burn", func(w http.ResponseWriter, r *http.Request) {
 		d := burnDuration(r.URL.Query().Get("ms"))
 		end := time.Now().Add(d)
-		n := 0
 		for time.Now().Before(end) {
-			n++
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"burned_ms": d.Milliseconds(), "hostname": hostname})
 	})
@@ -187,7 +116,6 @@ func newMux(s *store, prefix string) *http.ServeMux {
 	return mux
 }
 
-// healthcheck sert au HEALTHCHECK Docker : l'image distroless n'a ni shell ni curl.
 func healthcheck(port string) int {
 	c := http.Client{Timeout: 2 * time.Second}
 	resp, err := c.Get("http://127.0.0.1:" + port + "/healthz")
@@ -205,18 +133,17 @@ func main() {
 		os.Exit(healthcheck(port))
 	}
 
-	s := &store{
-		host: getenv("DB_HOST", "mariadb:3306"),
-		name: getenv("DB_NAME", "wordpress"),
-		tls:  getenv("DB_TLS", "false") == "true",
+	db, err := openDB()
+	if err != nil {
+		slog.Error("base", "error", err)
+		os.Exit(1)
 	}
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           newMux(s, getenv("DB_TABLE_PREFIX", "wp_")),
+		Handler:           newMux(db),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	// Kubernetes envoie SIGTERM avant de tuer le Pod : on finit les requêtes en cours.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
 	go func() {
@@ -231,4 +158,5 @@ func main() {
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	srv.Shutdown(shutdown)
+	db.Close()
 }

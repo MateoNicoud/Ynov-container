@@ -3,31 +3,9 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
-
-func TestSecretPrefersFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "pw")
-	os.WriteFile(path, []byte("depuis-fichier\n"), 0o600)
-	t.Setenv("DB_PASSWORD", "depuis-env")
-	t.Setenv("DB_PASSWORD_FILE", path)
-
-	got, err := secret("DB_PASSWORD")
-	if err != nil || got != "depuis-fichier" {
-		t.Fatalf("secret() = %q, %v ; attendu depuis-fichier", got, err)
-	}
-}
-
-func TestSecretFallsBackToEnv(t *testing.T) {
-	t.Setenv("DB_PASSWORD", "depuis-env")
-	got, _ := secret("DB_PASSWORD")
-	if got != "depuis-env" {
-		t.Fatalf("secret() = %q ; attendu depuis-env", got)
-	}
-}
 
 func TestBurnDuration(t *testing.T) {
 	cases := map[string]time.Duration{
@@ -45,9 +23,13 @@ func TestBurnDuration(t *testing.T) {
 }
 
 func TestHealthzDoesNotNeedDatabase(t *testing.T) {
-	mux := newMux(&store{host: "nulle-part:3306", name: "x"}, "wp_")
+	t.Setenv("DB_HOST", "nulle-part:3306")
+	db, err := openDB()
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newMux(db).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("/healthz = %d ; attendu 200", rec.Code)
 	}
