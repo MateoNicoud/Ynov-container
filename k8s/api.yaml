@@ -27,6 +27,13 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef: { name: db, key: DB_PASSWORD }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 32Mi }
+            limits: { cpu: 500m, memory: 128Mi }
 ---
 apiVersion: v1
 kind: Service
