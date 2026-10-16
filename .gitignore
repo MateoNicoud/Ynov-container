@@ -1,0 +1,5 @@
+.scratch/
+.env
+CLAUDE.md
+*.pdf
+*.png
