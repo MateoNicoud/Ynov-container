@@ -126,7 +126,7 @@ Scan Trivy de `tp-finale-api:1.0.0` (HIGH et CRITICAL, `ignore-unfixed`) : 0 HIG
 
 `.github/workflows/ci.yml` : à chaque push sur `main`, build de l'image puis scan Trivy. Le job échoue sur une faille HIGH ou CRITICAL qui a un correctif. Actions épinglées par SHA, `permissions: contents: read`.
 
-Run vert : https://github.com/MateoNicoud/tp-finale-docker/actions/runs/38909511872
+Run vert : https://github.com/MateoNicoud/Ynov-container/actions/runs/39951935622
 
 ## Démo
 
