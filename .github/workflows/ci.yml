@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - run: docker build -t tp-finale-api:1.0.0 app
+      - run: docker build -t tp-finale-api:1.0.0 "TP1 - Initiation à K3S/app"
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: tp-finale-api:1.0.0
