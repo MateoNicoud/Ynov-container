@@ -8,12 +8,14 @@ Le sujet prévoit 3 VM Proxmox sur un réseau L2. Ici, les 3 VM tournent sur un 
 - `tofu` (OpenTofu 1.10 ou plus)
 - `uv` et `make`
 - la clé SSH publique de chaque membre dans `tofu/terraform.tfvars`
+- `tofu/azure.auto.tfvars` (gitignoré), copié depuis `azure.auto.tfvars.example`, avec le subscription ID et le tenant ID de l'abonnement (`az account show --query "{id:id, tenant:tenantId}"`)
 - le mot de passe du vault Ansible (donné à l'oral)
 
 ## Lancement
 
 ```bash
 cd "TP2 - Wordpress & Kubeadm/tofu"
+cp azure.auto.tfvars.example azure.auto.tfvars
 tofu init
 tofu apply
 
