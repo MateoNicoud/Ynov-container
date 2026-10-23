@@ -1,0 +1,52 @@
+- name: Snapshot etcd
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+    ETCDCTL_ENDPOINTS: https://127.0.0.1:2379
+    ETCDCTL_CACERT: /etc/kubernetes/pki/etcd/ca.crt
+    ETCDCTL_CERT: /etc/kubernetes/pki/etcd/server.crt
+    ETCDCTL_KEY: /etc/kubernetes/pki/etcd/server.key
+  tasks:
+    - name: Nom du snapshot
+      ansible.builtin.set_fact:
+        snapshot: "/var/backups/etcd/etcd-{{ now(fmt='%Y-%m-%d_%H%M%S') }}.db"
+
+    - name: Version etcd
+      ansible.builtin.command: kubectl -n kube-system get pod etcd-{{ inventory_hostname }} -o jsonpath={.spec.containers[0].image}
+      register: etcd_image
+      changed_when: false
+
+    - name: etcdctl et etcdutl
+      ansible.builtin.unarchive:
+        src: "https://github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-amd64.tar.gz"
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: [--strip-components=1, --no-same-owner, "etcd-v{{ etcd_version }}-linux-amd64/etcdctl", "etcd-v{{ etcd_version }}-linux-amd64/etcdutl"]
+        creates: /usr/local/bin/etcdutl
+      vars:
+        etcd_version: "{{ etcd_image.stdout | regex_search('[0-9]+\\.[0-9]+\\.[0-9]+') }}"
+
+    - name: Dossier
+      ansible.builtin.file:
+        path: /var/backups/etcd
+        state: directory
+        mode: "0700"
+
+    - name: Snapshot
+      ansible.builtin.command: etcdctl snapshot save {{ snapshot }}
+
+    - name: Status
+      ansible.builtin.command: etcdutl snapshot status {{ snapshot }} -w table
+      register: status
+      changed_when: false
+
+    - name: Affichage
+      ansible.builtin.debug:
+        msg: "{{ status.stdout_lines }}"
+
+    - name: Copie sur le poste
+      ansible.builtin.fetch:
+        src: "{{ snapshot }}"
+        dest: "{{ playbook_dir }}/backups/"
+        flat: true
