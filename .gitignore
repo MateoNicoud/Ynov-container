@@ -3,3 +3,14 @@
 CLAUDE.md
 *.pdf
 *.png
+*:Zone.Identifier
+.terraform/
+*.tfstate*
+**/automatisation/inventory.yml
+**/automatisation/.venv
+**/automatisation/.vendor
+**/automatisation/.vault_pass
+**/automatisation/kubeconfig
+**/automatisation/backups/
+ansible.log
+tfplan
