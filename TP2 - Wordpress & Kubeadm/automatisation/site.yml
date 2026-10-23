@@ -4,3 +4,4 @@
 - ansible.builtin.import_playbook: 04-cni.yml
 - ansible.builtin.import_playbook: 05-helm.yml
 - ansible.builtin.import_playbook: 07-ingress.yml
+- ansible.builtin.import_playbook: 08-storage.yml
