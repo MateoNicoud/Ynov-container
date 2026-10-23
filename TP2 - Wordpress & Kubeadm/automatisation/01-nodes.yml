@@ -1,0 +1,152 @@
+- name: Préparation des nœuds
+  hosts: k8s_nodes
+  become: true
+  handlers:
+    - name: Restart containerd
+      ansible.builtin.systemd_service:
+        name: containerd
+        state: restarted
+    - name: Restart multipathd
+      ansible.builtin.systemd_service:
+        name: multipathd
+        state: restarted
+  tasks:
+    - name: Hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Fuseau horaire
+      community.general.timezone:
+        name: Europe/Paris
+
+    - name: /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item].private_ip }} {{ item }}"
+      loop: "{{ groups['k8s_nodes'] }}"
+
+    - name: Swap off
+      ansible.builtin.command: swapoff -a
+      when: ansible_facts.swaptotal_mb > 0
+
+    - name: Swap hors fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\sswap\s.*)$'
+        replace: '# \1'
+
+    - name: Modules noyau persistants
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+          iscsi_tcp
+
+    - name: Modules noyau
+      community.general.modprobe:
+        name: "{{ item }}"
+      loop: [overlay, br_netfilter, iscsi_tcp]
+
+    - name: Sysctl
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "1"
+        sysctl_file: /etc/sysctl.d/99-k8s.conf
+      loop:
+        - net.bridge.bridge-nf-call-iptables
+        - net.bridge.bridge-nf-call-ip6tables
+        - net.ipv4.ip_forward
+
+    - name: Paquets
+      ansible.builtin.apt:
+        name: [containerd, apt-transport-https, ca-certificates, curl, gpg, open-iscsi, nfs-common, cryptsetup, jq]
+        update_cache: true
+
+    - name: Configuration containerd par défaut
+      ansible.builtin.shell: mkdir -p /etc/containerd && containerd config default > /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+      notify: Restart containerd
+
+    - name: SystemdCgroup
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+      notify: Restart containerd
+
+    - name: Dépôt Kubernetes
+      ansible.builtin.deb822_repository:
+        name: kubernetes
+        types: deb
+        uris: "https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/"
+        suites: /
+        signed_by: "https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/Release.key"
+
+    - name: kubelet kubeadm kubectl
+      ansible.builtin.apt:
+        name: [kubelet, kubeadm, kubectl]
+        update_cache: true
+
+    - name: Hold
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop: [kubelet, kubeadm, kubectl]
+
+    - name: Services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: [containerd, kubelet, iscsid]
+
+    - name: Multipath
+      ansible.builtin.copy:
+        dest: /etc/multipath.conf
+        content: |
+          defaults {
+              user_friendly_names yes
+          }
+          blacklist {
+              devnode "^sd[a-z0-9]+"
+          }
+      notify: Restart multipathd
+
+    - name: Système de fichiers Longhorn
+      community.general.filesystem:
+        dev: /dev/disk/azure/scsi1/lun0
+        fstype: ext4
+        opts: -L longhorn
+
+    - name: UUID du disque Longhorn
+      ansible.builtin.command: blkid -s UUID -o value /dev/disk/azure/scsi1/lun0
+      register: longhorn_uuid
+      changed_when: false
+
+    - name: Montage Longhorn
+      ansible.posix.mount:
+        path: /var/lib/longhorn
+        src: "UUID={{ longhorn_uuid.stdout }}"
+        fstype: ext4
+        opts: defaults,noatime,nofail
+        state: mounted
+
+    - name: Script d'arrêt
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/deallocate-self
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          imds=http://169.254.169.254/metadata
+          token=$(curl -s -H Metadata:true "$imds/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/" | jq -r .access_token)
+          id=$(curl -s -H Metadata:true "$imds/instance/compute/resourceId?api-version=2021-02-01&format=text")
+          curl -s -X POST -H "Authorization: Bearer $token" -H "Content-Length: 0" "https://management.azure.com$id/deallocate?api-version=2024-07-01"
+
+    - name: Arrêt à 19 h
+      ansible.builtin.cron:
+        name: deallocate
+        hour: "19"
+        minute: "0"
+        job: /usr/local/sbin/deallocate-self

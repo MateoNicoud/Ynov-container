@@ -1,0 +1,77 @@
+- name: Traefik, cert-manager, metrics-server
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Traefik
+      kubernetes.core.helm:
+        name: traefik
+        chart_ref: traefik
+        chart_repo_url: https://traefik.github.io/charts
+        chart_version: "{{ traefik_chart_version }}"
+        release_namespace: traefik
+        create_namespace: true
+        wait: true
+        values:
+          deployment:
+            replicas: 2
+          ingressClass:
+            enabled: true
+            isDefaultClass: true
+          service:
+            spec:
+              type: NodePort
+          ports:
+            web:
+              nodePort: 30080
+            websecure:
+              nodePort: 30443
+
+    - name: cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: cert-manager
+        chart_repo_url: https://charts.jetstack.io
+        chart_version: "{{ cert_manager_version }}"
+        release_namespace: cert-manager
+        create_namespace: true
+        wait: true
+        values:
+          crds:
+            enabled: true
+
+    - name: metrics-server
+      kubernetes.core.helm:
+        name: metrics-server
+        chart_ref: metrics-server
+        chart_repo_url: https://kubernetes-sigs.github.io/metrics-server/
+        chart_version: "{{ metrics_server_chart_version }}"
+        release_namespace: kube-system
+        wait: true
+        values:
+          args:
+            - --kubelet-insecure-tls
+
+    - name: ClusterIssuers Let's Encrypt
+      ansible.builtin.command: kubectl apply -f -
+      args:
+        stdin: |
+          {% for name, server in {'letsencrypt-staging': 'https://acme-staging-v02.api.letsencrypt.org/directory', 'letsencrypt': 'https://acme-v02.api.letsencrypt.org/directory'}.items() %}
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: {{ name }}
+          spec:
+            acme:
+              server: {{ server }}
+              privateKeySecretRef:
+                name: {{ name }}-account
+              solvers:
+                - http01:
+                    ingress:
+                      ingressClassName: traefik
+          {% endfor %}
+      register: issuers
+      changed_when: "'created' in issuers.stdout or 'configured' in issuers.stdout"

@@ -1,0 +1,8 @@
+CREATE TABLE wp_posts (
+  ID BIGINT AUTO_INCREMENT PRIMARY KEY,
+  post_title TEXT NOT NULL,
+  post_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  post_status VARCHAR(20) NOT NULL DEFAULT 'publish',
+  post_type VARCHAR(20) NOT NULL DEFAULT 'post'
+);
+INSERT INTO wp_posts (post_title) VALUES ('Hello');

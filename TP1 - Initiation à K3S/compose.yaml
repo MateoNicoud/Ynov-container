@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: ./app
+      args:
+        VERSION: ${API_VERSION}
+    image: tp-finale-api:${API_VERSION}
+    environment:
+      DB_HOST: mariadb:3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${API_PORT}:8080"
+    networks:
+      - internal
+      - public
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 1m
+      start_interval: 2s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - internal
+
+networks:
+  internal:
+    internal: true
+  public:
+
+volumes:
+  db_data:

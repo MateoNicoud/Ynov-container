@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-data
+  namespace: tp-finale
+spec:
+  storageClassName: local-path
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: tp-finale
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:11.8
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: app-config, key: DB_NAME }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: app-config, key: DB_USER }
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db, key: DB_PASSWORD }
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db, key: DB_ROOT_PASSWORD }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mariadb-data
+        - name: init
+          configMap:
+            name: mariadb-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: tp-finale
+spec:
+  selector:
+    app: mariadb
+  ports:
+    - port: 3306

@@ -1,0 +1,92 @@
+- name: État des nœuds
+  hosts: k8s_nodes
+  become: true
+  tasks:
+    - name: admin.conf
+      ansible.builtin.stat:
+        path: "{{ kubeconfig }}"
+      register: admin_conf
+
+- name: kubeadm init
+  hosts: k8s_first
+  become: true
+  tasks:
+    - name: Configuration kubeadm
+      ansible.builtin.copy:
+        dest: /root/kubeadm-config.yaml
+        content: |
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: InitConfiguration
+          localAPIEndpoint:
+            advertiseAddress: {{ private_ip }}
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: ClusterConfiguration
+          controlPlaneEndpoint: 127.0.0.1:8443
+          apiServer:
+            certSANs:
+              - {{ lb_fqdn }}
+              - {{ lb_ip }}
+              - 127.0.0.1
+          {% for host in groups['k8s_nodes'] %}
+              - {{ hostvars[host].private_ip }}
+          {% endfor %}
+          networking:
+            podSubnet: {{ pod_cidr }}
+            serviceSubnet: {{ service_cidr }}
+          ---
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          kind: KubeletConfiguration
+          cgroupDriver: systemd
+
+    - name: Init
+      ansible.builtin.command: kubeadm init --config /root/kubeadm-config.yaml --upload-certs
+      when: not admin_conf.stat.exists
+
+    - name: Certificate key
+      ansible.builtin.shell: kubeadm init phase upload-certs --upload-certs | tail -1
+      register: certificate_key
+      when: groups['k8s_others'] | map('extract', hostvars, ['admin_conf', 'stat', 'exists']) | reject | list | length > 0
+
+    - name: Commande de join
+      ansible.builtin.command: kubeadm token create --print-join-command --ttl 30m
+      register: join_command
+      when: certificate_key is not skipped
+
+- name: kubeadm join
+  hosts: k8s_others
+  become: true
+  serial: 1
+  tasks:
+    - name: Join control-plane
+      ansible.builtin.command: >-
+        {{ hostvars[groups['k8s_first'][0]].join_command.stdout }}
+        --control-plane
+        --certificate-key {{ hostvars[groups['k8s_first'][0]].certificate_key.stdout }}
+        --apiserver-advertise-address {{ private_ip }}
+      when: not admin_conf.stat.exists
+
+- name: Finalisation
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Retrait du taint control-plane
+      ansible.builtin.command: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+      register: untaint
+      changed_when: "'untainted' in untaint.stdout"
+      failed_when: untaint.rc != 0 and 'not found' not in untaint.stderr
+
+    - name: Lecture admin.conf
+      ansible.builtin.slurp:
+        src: "{{ kubeconfig }}"
+      register: admin_conf_content
+
+    - name: Kubeconfig du poste
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/kubeconfig"
+        mode: "0600"
+        content: "{{ admin_conf_content.content | b64decode | regex_replace('server: https://.*', 'server: https://' ~ lb_fqdn ~ ':6443') }}"
+      delegate_to: localhost
+      become: false

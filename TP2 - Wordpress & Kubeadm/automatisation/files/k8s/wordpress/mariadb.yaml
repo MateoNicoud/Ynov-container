@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+spec:
+  clusterIP: None
+  selector:
+    app: mariadb
+  ports:
+    - port: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+spec:
+  serviceName: mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mariadb
+          image: mariadb:11.8
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [healthcheck.sh, --innodb_initialized]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MARIADB_DATABASE
+              value: wordpress
+            - name: MARIADB_USER
+              value: wordpress
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wordpress-db
+                  key: password
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wordpress-db
+                  key: root-password
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 5Gi

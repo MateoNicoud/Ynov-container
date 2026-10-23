@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-data
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+spec:
+  selector:
+    app: wordpress
+  ports:
+    - port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      serviceAccountName: wordpress
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: wordpress
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: wordpress
+          image: wordpress:7.1-apache
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 80
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: mariadb-0.mariadb
+            - name: WORDPRESS_DB_NAME
+              value: wordpress
+            - name: WORDPRESS_DB_USER
+              value: wordpress
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wordpress-db
+                  key: password
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/www/html
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: wordpress-data
