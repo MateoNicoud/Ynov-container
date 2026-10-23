@@ -183,6 +183,10 @@ resource "azurerm_linux_virtual_machine" "nodes" {
     type = "SystemAssigned"
   }
 
+  lifecycle {
+    ignore_changes = [admin_ssh_key]
+  }
+
   dynamic "admin_ssh_key" {
     for_each = var.ssh_public_keys
     content {
@@ -239,6 +243,7 @@ resource "local_file" "inventory" {
         ansible_user = var.admin_user
         lb_ip        = azurerm_public_ip.lb.ip_address
         lb_fqdn      = azurerm_public_ip.lb.fqdn
+        ssh_keys     = var.ssh_public_keys
       }
       children = {
         k8s_nodes = {

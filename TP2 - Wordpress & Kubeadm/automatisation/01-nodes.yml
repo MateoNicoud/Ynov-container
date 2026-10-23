@@ -11,6 +11,12 @@
         name: multipathd
         state: restarted
   tasks:
+    - name: Clés SSH de l'équipe
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ item }}"
+      loop: "{{ ssh_keys }}"
+
     - name: Hostname
       ansible.builtin.hostname:
         name: "{{ inventory_hostname }}"

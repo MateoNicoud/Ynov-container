@@ -97,7 +97,7 @@ Chaque nœud est control-plane et worker. kubelet et les composants du plan de c
 
 ## Équipe, coût et destruction
 
-Ajouter une clé SSH : une ligne dans `ssh_public_keys` de `tofu/terraform.tfvars`, puis `tofu apply`. La connexion se fait par l'IP publique et un port par nœud :
+Ajouter une clé SSH : une ligne dans `ssh_public_keys` de `tofu/terraform.tfvars`, puis `tofu apply` (qui met à jour l'inventaire) et `make deploy` (01-nodes pose les clés). Les clés données à Azure ne servent qu'à la création des VM : tofu ignore leurs changements, sinon azurerm recréerait chaque VM. La connexion se fait par l'IP publique et un port par nœud :
 
 ```bash
 ssh -p 2201 azureuser@tp2-k8s-ynov.spaincentral.cloudapp.azure.com   # k8s-1
