@@ -46,3 +46,25 @@
       ansible.builtin.assert:
         that: pods.stdout_lines | reject('search', 'Running|Completed') | list | length == 0
         fail_msg: "{{ pods.stdout_lines | reject('search', 'Running|Completed') | list }}"
+
+    - name: PVC wordpress
+      ansible.builtin.command: kubectl -n wordpress get pvc --no-headers
+      register: pvc
+      changed_when: false
+
+    - name: PVC WordPress et MariaDB Bound
+      ansible.builtin.assert:
+        that:
+          - pvc.stdout_lines | length == 2
+          - pvc.stdout_lines | reject('search', ' Bound ') | list | length == 0
+        fail_msg: "{{ pvc.stdout_lines }}"
+
+    - name: Certificate Ready
+      ansible.builtin.command: kubectl -n wordpress wait --for condition=Ready certificate/wordpress-tls --timeout=10s
+      changed_when: false
+
+    - name: Site en HTTPS avec certificat valide
+      ansible.builtin.uri:
+        url: "https://{{ hostvars[groups['k8s_first'][0]].lb_fqdn }}/"
+        follow_redirects: none
+        status_code: [200, 302]

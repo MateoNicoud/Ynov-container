@@ -5,3 +5,4 @@
 - ansible.builtin.import_playbook: 05-helm.yml
 - ansible.builtin.import_playbook: 07-ingress.yml
 - ansible.builtin.import_playbook: 08-storage.yml
+- ansible.builtin.import_playbook: 09-wordpress.yml

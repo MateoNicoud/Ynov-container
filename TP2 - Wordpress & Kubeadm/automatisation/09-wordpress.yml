@@ -1,0 +1,56 @@
+- name: WordPress
+  hosts: k8s_first
+  become: true
+  vars_files:
+    - secret.yml
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Dossier des manifests
+      ansible.builtin.file:
+        path: /root/wordpress
+        state: directory
+        mode: "0700"
+
+    - name: Manifests
+      ansible.builtin.template:
+        src: "{{ item }}"
+        dest: /root/wordpress/
+        mode: "0600"
+      with_fileglob: files/k8s/wordpress/*
+
+    - name: Namespace
+      ansible.builtin.command: kubectl apply -f /root/wordpress/namespace.yaml
+      register: namespace
+      changed_when: "'unchanged' not in namespace.stdout"
+
+    - name: Secret wordpress-db
+      ansible.builtin.command: kubectl apply -f -
+      args:
+        stdin: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: wordpress-db
+            namespace: wordpress
+          data:
+            password: {{ wordpress_db_password | b64encode }}
+            root-password: {{ wordpress_db_root_password | b64encode }}
+      register: secret
+      changed_when: "'unchanged' not in secret.stdout"
+      no_log: true
+
+    - name: Diff
+      ansible.builtin.command: kubectl diff -k /root/wordpress
+      register: diff
+      changed_when: false
+      failed_when: diff.rc > 1
+
+    - name: Apply
+      ansible.builtin.command: kubectl apply -k /root/wordpress
+      when: diff.rc == 1
+
+    - name: Rollout
+      ansible.builtin.command: kubectl -n wordpress rollout status {{ item }} --timeout=600s
+      loop: [statefulset/mariadb, deployment/wordpress]
+      changed_when: false
