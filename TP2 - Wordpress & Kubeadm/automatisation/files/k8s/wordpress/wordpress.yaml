@@ -24,7 +24,6 @@ kind: Deployment
 metadata:
   name: wordpress
 spec:
-  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -35,9 +34,38 @@ spec:
       labels:
         app: wordpress
     spec:
+      serviceAccountName: wordpress
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: wordpress
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: wordpress
           image: wordpress:7.1-apache
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
           ports:
             - containerPort: 80
           env:

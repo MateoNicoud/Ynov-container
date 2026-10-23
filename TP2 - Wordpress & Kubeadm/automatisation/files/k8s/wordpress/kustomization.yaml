@@ -6,3 +6,6 @@ resources:
   - mariadb.yaml
   - wordpress.yaml
   - ingress.yaml
+  - hpa.yaml
+  - rbac.yaml
+  - netpol.yaml
