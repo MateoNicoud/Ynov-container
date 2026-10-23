@@ -180,6 +180,49 @@ Mesures du 23/10/2026 :
 - P3 : `kubectl get nodes` répond en 0,2 s pendant toute la panne, via k8s-2 et k8s-3. Il n'y a pas de VIP à déplacer : la sonde 6443 du Load Balancer et HAProxy écartent k8s-1. Le site tombe en 503 parce que les pods WordPress étaient sur k8s-1.
 - P5 : `kubectl` passe en timeout puis en `Forbidden`, l'apiserver ne lisant plus le RBAC dans etcd. Le site ne répond plus non plus, alors que Traefik, MariaDB, WordPress et les volumes tournaient sur k8s-1. Les deux CoreDNS étaient sur k8s-3, et WordPress ne résolvait plus `mariadb-0.mariadb`. Au redémarrage de k8s-2, l'API revient en 30 s.
 
+## Démo et preuves
+
+`automatisation/demo.sh` enchaîne la démonstration en 10 étapes, avec une pause avant chaque action. On peut n'en lancer qu'une partie : `./demo.sh 8 10` joue seulement les pannes.
+
+| Étape | Contenu |
+|---|---|
+| 1 | nœuds Ready, taints, membres etcd, leader, `make check` |
+| 2 | Traefik, ClusterIssuers, Certificate, certificat Let's Encrypt vu par `curl` |
+| 3 | disque Longhorn monté, StorageClass, PVC, volumes Longhorn |
+| 4 | suppression du pod WordPress, titre du site avant et après |
+| 5 | probes, `id` de MariaDB, SecurityContext, token absent, RBAC, NetworkPolicy, montée du HPA sous charge |
+| 6 | snapshot etcd rapatrié dans `backups/` |
+| 7 | snapshot et revert Longhorn, guidés dans l'UI |
+| 8 | P3, arrêt de k8s-1 |
+| 9 | P1, arrêt du nœud qui porte MariaDB |
+| 10 | P5, arrêt de k8s-2 et k8s-3 |
+
+Pour garder une trace des étapes 1 à 6, enregistrer le terminal :
+
+```bash
+cd "TP2 - Wordpress & Kubeadm/automatisation"
+mkdir -p ../preuves
+asciinema rec ../preuves/01-06-cli.cast -c "./demo.sh 1 6"
+```
+
+Pour les étapes 7 à 10, filmer l'écran (OBS, ou Win+G sous Windows) avec trois terminaux visibles : `./demo.sh 8 10`, `./ha-probe.sh`, et `watch -n2 'kubectl get nodes; kubectl -n wordpress get pods -o wide'`.
+
+Preuves à mettre dans `preuves/` :
+
+| Fichier | Ce qu'on doit y voir |
+|---|---|
+| `01-06-cli.cast` | étapes 1 à 6 sans erreur, `failed=0` dans `make check` |
+| `site.png` | le site ouvert dans le navigateur, sur le FQDN |
+| `certificat.png` | le détail du certificat dans le navigateur : émis par Let's Encrypt, valide |
+| `longhorn-volumes.png` | l'UI Longhorn, les 2 volumes `healthy` avec 2 réplicas |
+| `longhorn-revert.mp4` | l'étape 7 : `casse.txt` présent, revert dans l'UI, `casse.txt` absent |
+| `p3.mp4` | `kubectl` qui répond pendant l'arrêt de k8s-1 |
+| `p1.mp4` | ha-probe en 503 puis de nouveau en 200, MariaDB recréé sur un autre nœud |
+| `p5.mp4` | `kubectl` en erreur, état du site, retour de l'API au redémarrage de k8s-2 |
+| `azure.png` | le portail Azure : resource group `rg-tp2-k8s` avec les 3 VM, le Load Balancer et l'IP publique |
+
+Pour chaque panne, noter la prédiction avant l'arrêt et l'écart observé après : c'est ce que demande le module 12 du sujet.
+
 ## Limites
 
 - SSH (2201 à 2203) et l'API (6443) sont ouverts à tout Internet (`admin_cidr = 0.0.0.0/0`) pour que le groupe se connecte sans gérer d'IP. L'accès SSH se fait par clé seulement, l'API par certificat client.
