@@ -1,0 +1,48 @@
+- name: Membres etcd
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: member list
+      ansible.builtin.command: >-
+        kubectl -n kube-system exec etcd-{{ inventory_hostname }} --
+        etcdctl --endpoints=https://127.0.0.1:2379
+        --cacert=/etc/kubernetes/pki/etcd/ca.crt
+        --cert=/etc/kubernetes/pki/etcd/server.crt
+        --key=/etc/kubernetes/pki/etcd/server.key
+        member list
+      register: members
+      changed_when: false
+
+    - name: 3 membres started
+      ansible.builtin.assert:
+        that: members.stdout_lines | select('search', ', started, ') | list | length == 3
+        fail_msg: "{{ members.stdout_lines }}"
+
+- name: Cluster vu du poste
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ playbook_dir }}/kubeconfig"
+  tasks:
+    - name: Nœuds
+      ansible.builtin.command: kubectl get nodes --no-headers
+      register: nodes
+      changed_when: false
+
+    - name: 3 nœuds Ready
+      ansible.builtin.assert:
+        that: nodes.stdout_lines | select('search', ' Ready ') | list | length == 3
+        fail_msg: "{{ nodes.stdout_lines }}"
+
+    - name: Pods
+      ansible.builtin.command: kubectl get pods -A --no-headers
+      register: pods
+      changed_when: false
+
+    - name: Aucun pod hors Running/Completed
+      ansible.builtin.assert:
+        that: pods.stdout_lines | reject('search', 'Running|Completed') | list | length == 0
+        fail_msg: "{{ pods.stdout_lines | reject('search', 'Running|Completed') | list }}"

@@ -1,0 +1,5 @@
+- ansible.builtin.import_playbook: 01-nodes.yml
+- ansible.builtin.import_playbook: 02-apiserver-lb.yml
+- ansible.builtin.import_playbook: 03-kubeadm.yml
+- ansible.builtin.import_playbook: 04-cni.yml
+- ansible.builtin.import_playbook: 05-helm.yml
