@@ -1,0 +1,54 @@
+name: tp3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "TP3 - Bark4me/app/**"
+      - ".github/workflows/tp3.yml"
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Job de build. Le job de livraison (ticket 11) le déclarera dans `needs: build-scan-push`.
+  build-scan-push:
+    runs-on: ubuntu-latest
+    # packages: write est limité à ce job, pour le push GHCR.
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [web, profiles, swipes, pedigree, photos]
+    env:
+      LOCAL_TAG: bark4me-${{ matrix.service }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Build
+        run: docker build -t "$LOCAL_TAG" "TP3 - Bark4me/app/${{ matrix.service }}"
+
+      # Le scan passe avant tout push : une HIGH/CRITICAL corrigeable bloque la publication.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.LOCAL_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Images publiques, donc aucun imagePullSecret côté cluster. Un package GHCR créé par
+      # ce workflow est privé par défaut : régler sa visibilité sur "Public" une fois dans
+      # GitHub (Packages > bark4me-<service> > Package settings > Change visibility).
+      # Tag = SHA du commit.
+      - name: Push GHCR
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="$REGISTRY/$owner/bark4me-${{ matrix.service }}:${{ github.sha }}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+          docker tag "$LOCAL_TAG" "$image"
+          docker push "$image"
