@@ -64,7 +64,12 @@
     ['chien-02.jpg', 'Maurice', 'Barzoï', 'Je conduis. Vous marchez.', false],
     ['chien-03.jpg', 'Mage Gérard', 'Carlin', 'Niveau 40. Cherche quête secondaire.', true],
     ['chien-04.jpg', 'Brutus', 'Rottweiler', 'Jamais sauté le jour des pattes.', false],
-    ['chien-05.jpg', 'Magalax', 'Bouledogue anglais', 'Canapé, chips, pas de regrets.', false]
+    ['chien-05.jpg', 'Magalax', 'Bouledogue anglais', 'Canapé, chips, pas de regrets.', false],
+    ['chien-06.jpg', 'Kevin', 'Chinois à crête', 'En direct depuis 14 h. Merci pour les abonnements.', false],
+    ['chien-07.jpg', 'Rex', 'Chien (vérifié)', 'Je suis un chien. Demandez à la niche.', true],
+    ['chien-08.jpg', 'Minos', 'Bouledogue français', 'Je collectionne les cartouches. Pas les rendez-vous.', false],
+    ['chien-09.jpg', 'Roger', 'Bouledogue anglais', 'Soirée cartes ce soir. Ne m\'appelez pas.', false],
+    ['chien-10.jpg', 'Chantal', 'Chihuahua', 'Mon meilleur profil, c\'est celui-ci.', false]
   ];
   var demo = document.querySelector('[data-demo]');
   if (!demo) return;
