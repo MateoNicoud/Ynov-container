@@ -64,7 +64,7 @@
     ['chien-02.jpg', 'Maurice', 'Barzoï', 'Je conduis. Vous marchez.', false],
     ['chien-03.jpg', 'Mage Gérard', 'Carlin', 'Niveau 40. Cherche quête secondaire.', true],
     ['chien-04.jpg', 'Brutus', 'Rottweiler', 'Jamais sauté le jour des pattes.', false],
-    ['chien-05.jpg', 'Monique', 'Bouledogue anglais', 'Canapé, chips, pas de regrets.', false]
+    ['chien-05.jpg', 'Magalax', 'Bouledogue anglais', 'Canapé, chips, pas de regrets.', false]
   ];
   var demo = document.querySelector('[data-demo]');
   if (!demo) return;
