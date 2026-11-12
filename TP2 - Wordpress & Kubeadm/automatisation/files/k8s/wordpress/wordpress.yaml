@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: wordpress-data
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes: [ReadWriteMany]
   storageClassName: longhorn
   resources:
     requests:
@@ -24,8 +24,6 @@ kind: Deployment
 metadata:
   name: wordpress
 spec:
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: wordpress
@@ -39,13 +37,22 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: wordpress
-              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: wordpress
+      tolerations:
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
       containers:
         - name: wordpress
           image: wordpress:7.1-apache
@@ -59,18 +66,19 @@ spec:
               path: /wp-login.php
               port: 80
             periodSeconds: 10
+          # Apache seulement : une base ou un NFS indisponible ne doit pas faire redémarrer le pod
           livenessProbe:
-            httpGet:
-              path: /wp-login.php
+            tcpSocket:
               port: 80
             initialDelaySeconds: 60
             periodSeconds: 20
             timeoutSeconds: 5
+            failureThreshold: 6
           ports:
             - containerPort: 80
           env:
             - name: WORDPRESS_DB_HOST
-              value: mariadb-0.mariadb
+              value: mariadb-galera-primary
             - name: WORDPRESS_DB_NAME
               value: wordpress
             - name: WORDPRESS_DB_USER

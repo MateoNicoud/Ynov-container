@@ -45,7 +45,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: mariadb
+      app.kubernetes.io/instance: mariadb-galera
   ingress:
     - from:
         - podSelector:
@@ -53,3 +53,33 @@ spec:
               app: wordpress
       ports:
         - port: 3306
+---
+# réplication Galera (3306, 4444 SST, 4567, 4568 IST, agent) entre les instances
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mariadb-galera-cluster
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: mariadb-galera
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: mariadb-galera
+---
+# l'opérateur crée les comptes (3306) et pilote la reprise via l'agent Galera
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: operator-to-mariadb
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: mariadb-galera
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mariadb-operator

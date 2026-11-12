@@ -5,7 +5,74 @@
     - secret.yml
   environment:
     KUBECONFIG: "{{ kubeconfig }}"
+  vars:
+    # quitter un nœud mort en 30 s au lieu des 300 s par défaut
+    fast_eviction:
+      - key: node.kubernetes.io/unreachable
+        operator: Exists
+        effect: NoExecute
+        tolerationSeconds: 30
+      - key: node.kubernetes.io/not-ready
+        operator: Exists
+        effect: NoExecute
+        tolerationSeconds: 30
   tasks:
+    - name: CRDs mariadb-operator
+      kubernetes.core.helm:
+        name: mariadb-operator-crds
+        chart_ref: mariadb-operator-crds
+        chart_repo_url: https://helm.mariadb.com/mariadb-operator
+        chart_version: "{{ mariadb_operator_version }}"
+        release_namespace: mariadb-operator
+        create_namespace: true
+        wait: true
+
+    - name: mariadb-operator
+      kubernetes.core.helm:
+        name: mariadb-operator
+        chart_ref: mariadb-operator
+        chart_repo_url: https://helm.mariadb.com/mariadb-operator
+        chart_version: "{{ mariadb_operator_version }}"
+        release_namespace: mariadb-operator
+        wait: true
+        wait_timeout: 10m
+        # 2 contrôleurs sur des nœuds distincts : si le nœud du leader tombe, l'autre
+        # reprend la main et bascule le primaire Galera sans attendre l'éviction
+        values:
+          ha:
+            enabled: true
+            replicas: 2
+          pdb:
+            enabled: true
+          tolerations: "{{ fast_eviction }}"
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    topologyKey: kubernetes.io/hostname
+                    labelSelector:
+                      matchLabels:
+                        app.kubernetes.io/name: mariadb-operator
+          webhook:
+            ha:
+              enabled: true
+              replicas: 2
+            pdb:
+              enabled: true
+            tolerations: "{{ fast_eviction }}"
+            affinity:
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+                      labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/name: mariadb-operator-webhook
+          certController:
+            tolerations: "{{ fast_eviction }}"
+
     - name: Dossier des manifests
       ansible.builtin.file:
         path: /root/wordpress
@@ -40,6 +107,40 @@
       changed_when: "'unchanged' not in secret.stdout"
       no_log: true
 
+    - name: Mode d'accès actuel du PVC wordpress-data
+      ansible.builtin.command: >-
+        kubectl -n wordpress get pvc wordpress-data --ignore-not-found
+        -o jsonpath='{.spec.accessModes[0]}'
+      register: pvc_mode
+      changed_when: false
+
+    # accessModes est immuable : un PVC encore en RWO doit être recréé en RWX
+    - name: Suppression du Deployment et du PVC RWO
+      ansible.builtin.command: kubectl -n wordpress delete {{ item }} --wait=true --timeout=300s
+      loop: [deployment/wordpress, pvc/wordpress-data]
+      when: pvc_mode.stdout == "ReadWriteOnce"
+
+    # migration de l'ancien StatefulSet mariadb (1 instance) vers le cluster Galera
+    - name: Ancien StatefulSet mariadb
+      ansible.builtin.command: kubectl -n wordpress get statefulset mariadb --ignore-not-found -o name
+      register: old_mariadb
+      changed_when: false
+
+    - name: Dump de l'ancienne base
+      ansible.builtin.shell: >-
+        set -o pipefail &&
+        kubectl -n wordpress exec mariadb-0 -c mariadb --
+        sh -c 'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction wordpress'
+        > /root/wordpress-migration.sql
+      args:
+        executable: /bin/bash
+      when: old_mariadb.stdout != ""
+
+    # WordPress arrêté pour ne pas écrire dans la base Galera vide avant la restauration
+    - name: Arrêt de WordPress pendant la migration
+      ansible.builtin.command: kubectl -n wordpress scale deployment wordpress --replicas=0
+      when: old_mariadb.stdout != ""
+
     - name: Diff
       ansible.builtin.command: kubectl diff -k /root/wordpress
       register: diff
@@ -50,7 +151,36 @@
       ansible.builtin.command: kubectl apply -k /root/wordpress
       when: diff.rc == 1
 
+    - name: Cluster Galera prêt
+      ansible.builtin.command: kubectl -n wordpress wait mariadb/mariadb-galera --for=condition=Ready --timeout=900s
+      changed_when: false
+
+    - name: Primaire Galera
+      ansible.builtin.command: kubectl -n wordpress get mariadb mariadb-galera -o jsonpath='{.status.currentPrimary}'
+      register: galera_primary
+      changed_when: false
+      when: old_mariadb.stdout != ""
+
+    - name: Restauration dans Galera
+      ansible.builtin.shell: >-
+        set -o pipefail &&
+        kubectl -n wordpress exec -i {{ galera_primary.stdout }} -c mariadb --
+        mariadb -uroot -p'{{ wordpress_db_root_password }}' wordpress
+        < /root/wordpress-migration.sql
+      args:
+        executable: /bin/bash
+      no_log: true
+      when: old_mariadb.stdout != ""
+
+    - name: Suppression de l'ancien MariaDB
+      ansible.builtin.command: kubectl -n wordpress delete {{ item }} --wait=true --timeout=300s
+      loop: [statefulset/mariadb, service/mariadb, pvc/data-mariadb-0]
+      when: old_mariadb.stdout != ""
+
+    - name: Redémarrage de WordPress
+      ansible.builtin.command: kubectl -n wordpress scale deployment wordpress --replicas=2
+      when: old_mariadb.stdout != ""
+
     - name: Rollout
-      ansible.builtin.command: kubectl -n wordpress rollout status {{ item }} --timeout=600s
-      loop: [statefulset/mariadb, deployment/wordpress]
+      ansible.builtin.command: kubectl -n wordpress rollout status deployment/wordpress --timeout=600s
       changed_when: false

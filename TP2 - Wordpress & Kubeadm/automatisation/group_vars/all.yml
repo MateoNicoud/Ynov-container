@@ -9,3 +9,4 @@ pod_cidr: 10.244.0.0/16
 service_cidr: 10.96.0.0/12
 cluster_issuer: letsencrypt
 kubeconfig: /etc/kubernetes/admin.conf
+mariadb_operator_version: 26.10.2
