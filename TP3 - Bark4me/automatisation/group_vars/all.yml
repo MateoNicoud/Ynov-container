@@ -11,3 +11,4 @@ service_cidr: 10.96.0.0/12
 kubeconfig: /etc/kubernetes/admin.conf
 deallocate_hour: "20"
 deallocate_minute: "5"
+postgres_storage_class: longhorn-postgres

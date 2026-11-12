@@ -1,7 +1,7 @@
 VENV := .venv
 PLAYBOOK := $(VENV)/bin/ansible-playbook
 
-.PHONY: install deploy syntax
+.PHONY: install deploy check syntax
 
 install:
 	uv venv $(VENV)
@@ -10,6 +10,9 @@ install:
 
 deploy:
 	$(PLAYBOOK) site.yml
+
+check:
+	$(PLAYBOOK) check.yml
 
 syntax:
 	$(PLAYBOOK) site.yml --syntax-check
