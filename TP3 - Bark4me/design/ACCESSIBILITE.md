@@ -40,13 +40,13 @@ Tous les ratios atteignent leur seuil. Le texte posé sur les photos (nom, race,
 
 ## Cibles tactiles
 
-- Boutons Patte, Truffe, Panneau : 64 px (`--target-action`).
+- Boutons Panneau et Patte : 64 px (`--target-action`). Truffe, au milieu et plus petit : 56 px (`--target-super`).
 - Tout autre contrôle (interrupteur, liens de navigation, boutons) : 44 px minimum (`--target-min`). Espace d'au moins 24 px entre les trois actions.
 
 ## Focus
 
 - Anneau de 3 px (`--c-focus`, au moins 3:1 sur fond et sur carte) avec décalage de 2 px et halo clair, visible sur photo comme sur aplat. Jamais `outline: none` sans remplaçant.
-- Ordre de tabulation : en-tête, interrupteur, carte, Panneau, Patte, Truffe. Au clavier, flèche gauche = Panneau, droite = Patte, haut = Truffe (en plus des boutons).
+- Ordre de tabulation : en-tête, interrupteur, carte, Panneau, Truffe, Patte. Au clavier, flèche gauche = Panneau, droite = Patte, haut = Truffe (en plus des boutons).
 
 ## Sémantique
 

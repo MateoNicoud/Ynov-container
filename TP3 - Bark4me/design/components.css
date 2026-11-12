@@ -72,8 +72,9 @@ a { color: var(--c-brand); text-underline-offset: 0.2em; }
   --icon-halo: var(--c-surface);
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
 .action svg { width: 2rem; height: 2rem; }
+.action--truffe svg { width: 1.75rem; height: 1.75rem; }
 .action--patte { --a-line: var(--c-patte-line); --a-fill: var(--c-patte); --a-on: var(--c-on-patte); }
-.action--truffe { --a-line: var(--c-truffe-line); --a-fill: var(--c-truffe); --a-on: var(--c-on-truffe); }
+.action--truffe { width: var(--target-super); height: var(--target-super); --a-line: var(--c-truffe-line); --a-fill: var(--c-truffe); --a-on: var(--c-on-truffe); }
 .action--panneau { --a-line: var(--c-panneau-line); --a-fill: var(--c-panneau); --a-on: var(--c-on-panneau); }
 .action:hover, .action.is-hover { background: var(--a-fill); color: var(--a-on); border-color: var(--a-fill); transform: translateY(-2px) scale(1.06); --icon-halo: var(--a-fill); }
 .action:active, .action.is-active { background: var(--a-fill); color: var(--a-on); border-color: var(--a-on); box-shadow: inset 0 0 0 3px var(--a-fill), inset 0 4px 10px rgb(0 0 0 / 0.35); transform: scale(0.94); --icon-halo: var(--a-fill); }

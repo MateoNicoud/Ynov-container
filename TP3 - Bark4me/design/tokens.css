@@ -75,7 +75,8 @@
 
   /* Cibles tactiles et mouvement */
   --target-min: 2.75rem;      /* 44 px : minimum absolu */
-  --target-action: 4rem;      /* 64 px : boutons Patte, Truffe, Panneau */
+  --target-action: 4rem;      /* 64 px : boutons Patte et Panneau */
+  --target-super: 3.5rem;     /* 56 px : bouton Truffe, au milieu, plus petit */
   --focus-ring: 3px;
   --dur-fast: 120ms;
   --dur: 280ms;
