@@ -1,0 +1,38 @@
+# Bark4me en local. Ouvrir http://localhost:8080
+name: bark4me
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: bark4me
+      POSTGRES_PASSWORD: bark4me
+      POSTGRES_DB: bark4me
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bark4me"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  profiles:
+    build: ./profiles
+    environment:
+      DATABASE_URL: postgres://bark4me:bark4me@postgres:5432/bark4me
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  web:
+    build: ./web
+
+  gateway:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./photos/images:/usr/share/nginx/photos:ro
+    ports:
+      - "8080:80"
+    depends_on: [web, profiles]
+
+volumes:
+  pgdata:
