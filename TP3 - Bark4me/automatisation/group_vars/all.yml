@@ -12,3 +12,17 @@ kubeconfig: /etc/kubernetes/admin.conf
 deallocate_hour: "20"
 deallocate_minute: "5"
 postgres_storage_class: longhorn-postgres
+
+# Application et scénarios : valeurs par défaut, surchargeables par variable d'environnement
+# (APP_NAMESPACE, APP_FQDN) ou par -e. Les scripts de scenarios/ lisent les mêmes variables.
+app_namespace: "{{ lookup('env', 'APP_NAMESPACE') | default('bark4me', true) }}"
+app_fqdn: "{{ lookup('env', 'APP_FQDN') | default(lb_fqdn, true) }}"
+app_services: [web, profiles, swipes, pedigree, photos]
+postgres_statefulset: postgres
+# Une URL par service exposé par l'Ingress, qui répond 200 quand l'application tourne.
+app_https_checks:
+  - { path: /, service: web }
+  - { path: /api/profiles, service: profiles }
+  - { path: /api/swipes/stats, service: swipes }
+  - { path: /api/pedigree, service: pedigree }
+  - { path: /photos/chien-01.jpg, service: photos }
