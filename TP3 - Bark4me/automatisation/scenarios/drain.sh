@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Scénario 1 : drain d'un nœud (celui de Postgres par défaut, ou NODE=k8s-2), puis uncordon.
-# Les PodDisruptionBudgets doivent empêcher toute coupure du site.
+# Les PodDisruptionBudgets doivent empêcher toute coupure du site : tous les chemins, Postgres compris,
+# sont sondés avec la tolérance stricte (PROBE_PG_TOLERANCE = PROBE_TOLERANCE).
+PROBE_PG_TOLERANCE="${PROBE_PG_TOLERANCE:-${PROBE_TOLERANCE:-15}}"
 # shellcheck source-path=SCRIPTDIR source=lib.sh
 . "$(dirname "$0")/lib.sh"
 init

@@ -17,9 +17,12 @@ postgres_storage_class: longhorn-postgres
 # (APP_NAMESPACE, APP_FQDN) ou par -e. Les scripts de scenarios/ lisent les mêmes variables.
 app_namespace: "{{ lookup('env', 'APP_NAMESPACE') | default('bark4me', true) }}"
 app_fqdn: "{{ lookup('env', 'APP_FQDN') | default(lb_fqdn, true) }}"
+# Deployments nommés comme les services (sans préfixe) ; images ghcr.io/<owner>/bark4me-<service>.
 app_services: [web, profiles, swipes, pedigree, photos]
 postgres_statefulset: postgres
 # Une URL par service exposé par l'Ingress, qui répond 200 quand l'application tourne.
+# Les scénarios (scenarios/lib.sh : PROBE_PATHS et PROBE_PATHS_PG) reprennent ces chemins, répartis
+# selon qu'ils dépendent de Postgres (/api/*) ou non (/ et /photos/*).
 app_https_checks:
   - { path: /, service: web }
   - { path: /api/profiles, service: profiles }

@@ -6,7 +6,7 @@
 init
 
 POD="${PG_STATEFULSET}-0"
-STATS_PATH="${STATS_PATH:-/api/swipes/stats}"
+STATS_PATH="${STATS_PATH:-/api/swipes/stats}" # un des PROBE_PATHS_PG
 
 wait_site 60
 probe_start

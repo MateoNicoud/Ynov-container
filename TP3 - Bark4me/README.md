@@ -58,7 +58,7 @@ kubectl get nodes
 1. **`make up`** crée le resource group `rg-tp3-bark4me`, le réseau, le Load Balancer, les 3 VM, l'arrêt du soir, et écrit `automatisation/inventory.yml`. Les versions de la plateforme viennent de `platform_versions` dans `tofu/variables.tf`. `make validate` vérifie la syntaxe et le format sans rien créer.
 2. **`make deploy`** enchaîne les playbooks de `site.yml`. Il est rejouable sans casse.
 3. **La CI** construit, scanne et publie les images, puis met à jour les Deployments (voir plus bas).
-4. **Les manifestes** de l'application s'appliquent à la main, depuis le poste, avec `KUBECONFIG` pointant sur `automatisation/kubeconfig` : `kubectl apply -k <dossier-des-manifestes>`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. La CI suppose des Deployments nommés `bark4me-<service>`, dont le conteneur porte le nom du service (`web`, `profiles`, `swipes`, `pedigree`, `photos`). Les variables `K8S_NAMESPACE`, `DEPLOY_PREFIX` et `CONTAINER_PREFIX` en tête du workflow s'adaptent à d'autres noms.
+4. **Les manifestes** de l'application s'appliquent à la main, depuis le poste, avec `KUBECONFIG` pointant sur `automatisation/kubeconfig` : `kubectl apply -k <dossier-des-manifestes>`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. Les Deployments doivent s'appeler `web`, `profiles`, `swipes`, `pedigree` et `photos` (le nom du service, sans préfixe), et leur conteneur porte le même nom. Seules les images gardent le préfixe : `ghcr.io/<owner>/bark4me-<service>`. Les scénarios et `group_vars/all.yml` (`app_services`) suivent cette convention ; les variables `K8S_NAMESPACE`, `DEPLOY_PREFIX` et `CONTAINER_PREFIX` en tête du workflow s'adaptent à d'autres noms (alors `APP_DEPLOYMENTS` côté scénarios).
 5. **`make check`** vérifie la plateforme puis l'application.
 
 | Playbook | Rôle |
@@ -106,11 +106,11 @@ Un seul secret est à créer, dans Settings, Secrets and variables, Actions :
 |---|---|
 | `KUBECONFIG_B64` | `base64 -w0 automatisation/kubeconfig` |
 
-Le push vers GHCR utilise le `GITHUB_TOKEN` fourni par GitHub. Les images sont publiques pour éviter tout `imagePullSecret` : un package créé par le workflow est privé au départ, il faut passer sa visibilité sur Public une fois (Packages, `bark4me-<service>`, Package settings, Change visibility). Le job `deploy` écrit le kubeconfig dans un fichier temporaire en `umask 077`, ne l'affiche pas et le supprime à la fin.
+Le push vers GHCR utilise le `GITHUB_TOKEN` fourni par GitHub. Les images sont publiques pour éviter tout `imagePullSecret` : un package créé par le workflow est privé au départ, il faut passer sa visibilité sur Public une fois (Packages, `bark4me-<service>`, Package settings, Change visibility). Le job `deploy` joint l'apiserver sur `lb_fqdn:6443` depuis les runners GitHub, dont les adresses ne sont pas connues d'avance : un `admin_cidr` restreint à votre IP bloque la livraison (la règle NSG du port 6443 ne laisse alors passer que cette IP). Le job `deploy` écrit le kubeconfig dans un fichier temporaire en `umask 077`, ne l'affiche pas et le supprime à la fin.
 
 ## Scénarios de démo
 
-Les 4 scénarios se lancent depuis `automatisation/`, avec `KUBECONFIG` sur `automatisation/kubeconfig` (c'est la valeur par défaut). Chacun sonde le site pendant la panne, attend le retour à la normale, puis lance `make check` (sauf avec `SKIP_MAKE_CHECK=1`). `make scenarios` les enchaîne.
+Les 4 scénarios se lancent depuis `automatisation/`, avec `KUBECONFIG` sur `automatisation/kubeconfig` (c'est la valeur par défaut). Chacun sonde le site pendant la panne (deux sondes : `/` et `/photos/...`, sans Postgres, avec la tolérance stricte `PROBE_TOLERANCE` ; `/api/profiles`, `/api/swipes/stats` et `/api/pedigree`, qui dépendent de Postgres, avec `PROBE_PG_TOLERANCE`), attend le retour à la normale, puis lance `make check` (sauf avec `SKIP_MAKE_CHECK=1`). `make scenarios` les enchaîne.
 
 | Cible | Panne | Attendu |
 |---|---|---|
@@ -119,7 +119,7 @@ Les 4 scénarios se lancent depuis `automatisation/`, avec `KUBECONFIG` sur `aut
 | `make scenario-longhorn` | suppression d'un réplica du volume de Postgres | Longhorn en reconstruit un autre, le site ne s'interrompt pas |
 | `make scenario-postgres` | suppression du pod `postgres-0` | le StatefulSet le recrée sur le même volume, les statistiques de Swipes reviennent |
 
-Les réglages utiles sont des variables d'environnement : `APP_NAMESPACE` (`bark4me`), `APP_FQDN`, `PROBE_TOLERANCE` (15 sondes ratées consécutives tolérées, le temps que le Load Balancer retire un nœud arrêté), `RECOVERY_TIMEOUT` (900 s), `AZ_RESOURCE_GROUP` (`rg-tp3-bark4me`). La liste complète est en tête de `automatisation/scenarios/lib.sh`.
+Les réglages utiles sont des variables d'environnement : `APP_NAMESPACE` (`bark4me`), `APP_FQDN`, `PROBE_TOLERANCE` (15 sondes ratées consécutives tolérées, le temps que le Load Balancer retire un nœud arrêté), `PROBE_PG_TOLERANCE` (240, pour la bascule de Postgres qui prend plusieurs minutes ; le scénario drain la ramène à `PROBE_TOLERANCE`, puisque les PodDisruptionBudgets interdisent toute coupure, Postgres compris), `RECOVERY_TIMEOUT` (900 s), `AZ_RESOURCE_GROUP` (`rg-tp3-bark4me`). La liste complète est en tête de `automatisation/scenarios/lib.sh`.
 
 Si un scénario est interrompu, il remet le nœud en service (uncordon ou `az vm start`) avant de sortir.
 
@@ -139,6 +139,8 @@ Les VM s'arrêtent seules chaque soir :
 
 - Azure les désalloue à 20 h, heure de Paris (`shutdown_time = "2000"` et `shutdown_timezone` dans `tofu/variables.tf`).
 - `01-nodes.yml` pose en plus un cron à 20 h 05 qui appelle l'API `deallocate` avec l'identité managée de la VM, au cas où l'arrêt Azure ne désallouerait pas (heures dans `deallocate_hour` et `deallocate_minute` de `group_vars/all.yml`).
+
+Le cron de 20 h 05 coupe aussi une VM rallumée avant cette heure (par exemple pour une démo qui déborde) : prévoir de la rallumer ou d'ajuster `deallocate_hour` et `deallocate_minute`.
 
 Après cette heure, rallumer avant de diagnostiquer quoi que ce soit :
 

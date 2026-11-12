@@ -35,8 +35,13 @@
       ansible.builtin.command: >-
         kubectl get pods -A --no-headers
         --field-selector=status.phase!=Running,status.phase!=Succeeded
-      register: bad_pods
+      register: all_bad_pods
       changed_when: false
+
+    - name: Pods hors Running/Succeeded de la plateforme (hors namespace de l'application)
+      ansible.builtin.set_fact:
+        bad_pods:
+          stdout_lines: "{{ all_bad_pods.stdout_lines | reject('match', '^' ~ app_namespace ~ ' ') | list }}"
 
     - name: Tous les pods sont Running
       ansible.builtin.assert:

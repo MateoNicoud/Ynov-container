@@ -13,10 +13,10 @@ permissions:
 env:
   REGISTRY: ghcr.io
   # Doivent correspondre aux manifestes de l'étudiant : namespace, nom du Deployment et nom
-  # du conteneur de chaque service sont <préfixe><service> (ex. DEPLOY_PREFIX=bark4me- donne
-  # bark4me-web). Adapter ces valeurs si les manifestes nomment les objets autrement.
+  # du conteneur de chaque service sont <préfixe><service> (par défaut sans préfixe : web ;
+  # DEPLOY_PREFIX=bark4me- donnerait bark4me-web). Adapter si les manifestes nomment les objets autrement.
   K8S_NAMESPACE: bark4me
-  DEPLOY_PREFIX: bark4me-
+  DEPLOY_PREFIX: ""
   CONTAINER_PREFIX: ""
 
 jobs:
