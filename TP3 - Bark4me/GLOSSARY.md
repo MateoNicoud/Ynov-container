@@ -26,6 +26,4 @@ Langage du domaine du faux site de rencontre pour chiens. Aucun détail d'implé
 
 **Éleveur** : le public de la fausse page pour éleveurs, parodie de page professionnelle.
 
-**Handicaps canins** : la fausse page qui énumère les « handicaps que les chiens ont tous » (humour, aucune portée médicale).
-
 **Mode daltochien** : le thème qui restreint les couleurs au spectre visible par un chien (bleus et jaunes), activable par un interrupteur.
