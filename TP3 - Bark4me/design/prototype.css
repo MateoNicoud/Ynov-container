@@ -84,3 +84,5 @@
 .thread, .threads, .inbox > *, .discover > * { min-width: 0; }
 .thread { grid-template-columns: minmax(0, 1fr); }
 .composer .btn { flex: none; }
+.match-photos img { flex: none; height: auto; aspect-ratio: 4 / 5; max-width: 60%; }
+.match-photos { width: 100%; }

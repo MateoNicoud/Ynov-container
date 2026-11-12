@@ -106,7 +106,7 @@
     var tot = counts.patte + counts.truffe + counts.panneau;
     $('[data-stats]').innerHTML = STATS.map(function (s) {
       var k = s[0], w = tot ? Math.round(counts[k] / tot * 100) : 0;
-      return '<div class="stat action--' + k + '" role="listitem" style="--a-fill:var(--c-' + k + ');--a-on:var(--c-on-' + k + ')"><span class="stat-icon"><svg aria-hidden="true"><use href="#i-' + k + '"/></svg></span><span class="stat-name">' + s[1] + '</span><span class="stat-value">' + counts[k] + '</span><span class="stat-bar" aria-hidden="true"><i style="--w:' + w + '%"></i></span></div>';
+      return '<div class="stat stat--' + k + '" role="listitem" style="--a-fill:var(--c-' + k + ');--a-on:var(--c-on-' + k + ')"><span class="stat-icon"><svg aria-hidden="true"><use href="#i-' + k + '"/></svg></span><span class="stat-name">' + s[1] + '</span><span class="stat-value">' + counts[k] + '</span><span class="stat-bar" aria-hidden="true"><i style="--w:' + w + '%"></i></span></div>';
     }).join('');
   }
   function setDisabled(v) { controls.querySelectorAll('.action').forEach(function (b) { b.disabled = v; }); }

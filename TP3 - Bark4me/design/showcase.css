@@ -55,3 +55,4 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: var(--c-surf
 .phone .hero h1 { font-size: var(--fs-xl); }
 .phone .switch-label-long { display: none; }
 .phone .switch-label-short { display: inline; }
+.match-photos img { aspect-ratio: 4 / 5; }
