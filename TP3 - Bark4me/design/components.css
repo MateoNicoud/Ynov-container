@@ -115,7 +115,7 @@ a { color: var(--c-brand); text-underline-offset: 0.2em; }
 .stat-bar { grid-column: 1 / -1; height: 0.5rem; border-radius: var(--r-pill); background: var(--c-surface-2); overflow: hidden; }
 .stat-bar i { display: block; height: 100%; width: var(--w); background: var(--a-fill); border-radius: inherit; }
 
-/* Pages Éleveurs / Handicaps canins */
+/* Page Éleveurs */
 .page { display: grid; gap: var(--sp-6); padding: var(--sp-5) var(--sp-4); max-width: 70rem; margin-inline: auto; }
 .hero { display: grid; gap: var(--sp-4); padding: var(--sp-6) var(--sp-5); border-radius: var(--r-lg); background: var(--c-ink); color: var(--c-bg); }
 .hero h1 { font-size: var(--fs-2xl); }
@@ -131,9 +131,6 @@ a { color: var(--c-brand); text-underline-offset: 0.2em; }
 .quote { padding: var(--sp-4); border-radius: var(--r-md); background: var(--c-surface-2); display: grid; gap: var(--sp-2); }
 .quote cite { font-size: var(--fs-sm); color: var(--c-ink-soft); font-style: normal; }
 .notice { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-badge-bg); color: var(--c-badge-ink); border: 1.5px solid var(--c-badge-line); font-size: var(--fs-sm); font-weight: var(--fw-medium); }
-.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
-.checklist li { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-3); align-items: start; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-surface); border: 1px solid var(--c-line-soft); }
-.checklist .n { font-family: var(--font-mono); font-weight: var(--fw-bold); color: var(--c-brand); }
 
 /* Mouvement : les retours animés passent par la classe .fly-*, et
    prefers-reduced-motion les remplace par un simple fondu. */

@@ -54,7 +54,7 @@ Tous les ratios atteignent leur seuil. Le texte posé sur les photos (nom, race,
 - Interrupteur : `<button role="switch" aria-checked>`.
 - Photos : `alt` = nom, race, accroche. Icônes décoratives : `aria-hidden`.
 - Résultat d'un Swipe et fin du Paquet annoncés dans une région `role="status"`.
-- Pages Éleveurs et Handicaps canins : encart « page humoristique » visible, sans portée médicale.
+- Page Éleveurs : encart « page parodique » visible.
 
 ## Mouvement
 
