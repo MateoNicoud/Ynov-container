@@ -69,7 +69,7 @@
     ['chien-07.jpg', 'Rex', 'Chien (vérifié)', 'Je suis un chien. Demandez à la niche.', true],
     ['chien-08.jpg', 'Minos', 'Bouledogue français', 'Je collectionne les cartouches. Pas les rendez-vous.', false],
     ['chien-09.jpg', 'Roger', 'Bouledogue anglais', 'Soirée cartes ce soir. Ne m\'appelez pas.', false],
-    ['chien-10.jpg', 'Chantal', 'Chihuahua', 'Mon meilleur profil, c\'est celui-ci.', false]
+    ['chien-10.jpg', 'Dominique', 'Chihuahua', 'Mon meilleur profil, c\'est celui-ci.', false]
   ];
   var demo = document.querySelector('[data-demo]');
   if (!demo) return;
