@@ -40,7 +40,7 @@
 
   /* ---------- Paquet ---------- */
   var slot = $('[data-slot]'), controls = $('[data-controls]'), hint = $('[data-hint]'), status = $('[data-status]');
-  var deck = [], i = 0, busy = false;
+  var deck = [], all = [], i = 0, busy = false;
 
   function say(msg) { status.textContent = ''; setTimeout(function () { status.textContent = msg; }, 30); }
   function cardHtml(p) {
@@ -56,9 +56,10 @@
     emit('bark:card', deck[i]);
   }
   function showEnd() {
-    slot.innerHTML = '<section class="end pop-in" aria-labelledby="end-t"><div class="end-art"><svg aria-hidden="true"><use href="#i-hotdog"/></svg></div><h2 id="end-t">Il n\'y a plus de hotdogs dans votre région</h2><p>Vous avez vu tout le Paquet.</p></section>';
+    slot.innerHTML = '<section class="end pop-in" aria-labelledby="end-t"><div class="end-art"><svg aria-hidden="true"><use href="#i-hotdog"/></svg></div><h2 id="end-t">Il n\'y a plus de hotdogs dans votre région</h2><p>Vous avez vu tout le Paquet. Vos Match vous attendent dans la Messagerie.</p><button class="btn" type="button" data-restart>Recommencer</button></section>';
     controls.hidden = true; hint.hidden = true;
     say('Il n\'y a plus de hotdogs dans votre région');
+    var r = $('[data-restart]'); if (r) r.focus();
   }
   function showMatch(p) {
     slot.innerHTML = '<section class="match pop-in" aria-labelledby="mt"><p class="eyebrow" style="color:inherit">Vous et ' + esc(p.name) + '</p><h2 class="match-title" id="mt">C\'est un Match&nbsp;!</h2>' +
@@ -106,6 +107,14 @@
     if (k) { e.preventDefault(); swipe(k); }
   });
   slot.addEventListener('click', function (e) {
+    if (e.target.closest('[data-restart]')) {
+      /* nouveau Visiteur : le serveur refuse un second Swipe du même Visiteur sur un Profil */
+      visitor = uuid(); store('bark4me-visitor', visitor);
+      seen = {}; store('bark4me-seen', '{}');
+      deck = all.slice(); i = 0; showCard();
+      $('.action--patte', controls).focus();
+      return;
+    }
     if (e.target.closest('[data-read]')) { emit('bark:read', deck[i]); next(); }
     if (e.target.closest('[data-next]')) {
       next();
@@ -115,7 +124,8 @@
 
   /* ---------- Démarrage ---------- */
   slot.innerHTML = '<p class="hint">Chargement du Paquet…</p>';
-  api('GET', '/api/profiles').then(function (all) {
+  api('GET', '/api/profiles').then(function (list) {
+    all = list;
     emit('bark:profiles', all);
     deck = all.filter(function (p) { return !seen[p.id]; });
     if (!deck.length) showEnd(); else showCard();
