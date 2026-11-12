@@ -1,0 +1,8 @@
+# Copier en terraform.tfvars
+dns_label  = "bark4me-ynov" # FQDN : <dns_label>.<location>.cloudapp.azure.com
+admin_cidr = "0.0.0.0/0"
+# vm_size  = "Standard_B2s_v2" # repli si le crédit manque
+ssh_public_keys = [
+  "ssh-ed25519 AAAA... prenom1",
+  "ssh-ed25519 AAAA... prenom2",
+]
