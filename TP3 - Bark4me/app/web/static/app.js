@@ -63,10 +63,11 @@
   function showMatch(p) {
     slot.innerHTML = '<section class="match pop-in" aria-labelledby="mt"><p class="eyebrow" style="color:inherit">Vous et ' + esc(p.name) + '</p><h2 class="match-title" id="mt">C\'est un Match&nbsp;!</h2>' +
       '<div class="match-photos"><img src="' + esc(p.photo) + '" alt="' + esc(p.name) + '" width="800" height="1000"></div>' +
-      '<div class="match-actions"><button class="btn" type="button" data-next>Continuer à swiper</button></div></section>';
+      '<p class="match-msg">' + esc(p.name) + ' vous a déjà écrit.</p>' +
+      '<div class="match-actions"><button class="btn" type="button" data-read>Lire le message</button><button class="btn btn--ghost" type="button" data-next>Continuer à swiper</button></div></section>';
     controls.hidden = true; hint.hidden = true;
     say('C\'est un Match avec ' + p.name);
-    $('[data-next]').focus();
+    $('[data-read]').focus();
   }
   function next() {
     i++;
@@ -105,6 +106,7 @@
     if (k) { e.preventDefault(); swipe(k); }
   });
   slot.addEventListener('click', function (e) {
+    if (e.target.closest('[data-read]')) { emit('bark:read', deck[i]); next(); }
     if (e.target.closest('[data-next]')) {
       next();
       var b = controls.hidden ? null : $('.action--patte', controls); if (b) b.focus();

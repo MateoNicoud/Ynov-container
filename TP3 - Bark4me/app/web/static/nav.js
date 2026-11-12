@@ -36,7 +36,9 @@
       t.tabIndex = on ? 0 : -1;
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
     });
+    document.dispatchEvent(new CustomEvent('bark:tab', { detail: id }));
   }
+  document.addEventListener('bark:goto', function (e) { showTab(e.detail); });
   tabs.forEach(function (t, i) {
     t.addEventListener('click', function () { showTab(t.id.replace('tab-', '')); });
     t.addEventListener('keydown', function (e) {
