@@ -60,7 +60,7 @@
 
   /* Démo du Paquet */
   var DECK = [
-    ['chien-01.jpg', 'Jean-Baptiste', 'Bouledogue français', 'Béret, baguette, aucune excuse.', true],
+    ['chien-01.jpg', 'Jean Baguette', 'Bouledogue français', 'Béret, baguette, aucune excuse.', true],
     ['chien-02.jpg', 'Maurice', 'Barzoï', 'Je conduis. Vous marchez.', false],
     ['chien-03.jpg', 'Mage Gérard', 'Carlin', 'Niveau 40. Cherche quête secondaire.', true],
     ['chien-04.jpg', 'Brutus', 'Rottweiler', 'Jamais sauté le jour des pattes.', false],
