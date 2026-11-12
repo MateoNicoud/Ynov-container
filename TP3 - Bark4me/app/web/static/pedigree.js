@@ -1,7 +1,7 @@
 /* Pédigrée : badge « validé » sur les Profils concernés, certificat SVG, vérification d'un numéro. */
 (function () {
   'use strict';
-  var byDog = {};
+  var byDog = {}, current = null;
   var dlg = document.querySelector('[data-cert]');
   var form = document.querySelector('[data-verify]');
   var result = document.querySelector('[data-verify-result]');
@@ -21,7 +21,7 @@
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
   }
 
-  document.addEventListener('bark:card', function (e) { placeBadge(e.detail); });
+  document.addEventListener('bark:card', function (e) { current = e.detail; placeBadge(current); });
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-number]');
     if (b) {
@@ -53,10 +53,6 @@
 
   fetch('/api/pedigree').then(function (r) { return r.json(); }).then(function (list) {
     list.forEach(function (c) { byDog[c.dog] = c; });
-    var cur = document.querySelector('.card');
-    if (cur) { /* une carte est déjà affichée avant l'arrivée des Pédigrées */
-      var name = cur.getAttribute('aria-label') || '';
-      list.forEach(function (c) { if (name === 'Profil de ' + c.name) placeBadge({ id: c.dog }); });
-    }
+    if (current) placeBadge(current); /* la carte était affichée avant l'arrivée des Pédigrées */
   }).catch(function () {});
 })();
