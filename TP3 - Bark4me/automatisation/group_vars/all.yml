@@ -1,0 +1,13 @@
+# Les versions viennent de l'inventaire généré par tofu (variable platform_versions).
+k8s_minor: v1.34
+calico_version: "{{ versions.calico }}"
+helm_version: "{{ versions.helm }}"
+traefik_chart_version: "{{ versions.traefik_chart }}"
+cert_manager_version: "{{ versions.cert_manager }}"
+metrics_server_chart_version: "{{ versions.metrics_server }}"
+longhorn_version: "{{ versions.longhorn }}"
+pod_cidr: 10.244.0.0/16
+service_cidr: 10.96.0.0/12
+kubeconfig: /etc/kubernetes/admin.conf
+deallocate_hour: "20"
+deallocate_minute: "5"

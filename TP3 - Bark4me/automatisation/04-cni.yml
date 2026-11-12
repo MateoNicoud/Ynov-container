@@ -1,0 +1,44 @@
+- name: Calico
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Présence de l'opérateur Tigera
+      ansible.builtin.command: kubectl get deployment tigera-operator -n tigera-operator
+      register: tigera_operator
+      changed_when: false
+      failed_when: false
+
+    - name: Tigera operator
+      ansible.builtin.command: kubectl apply --server-side -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/{{ item }}
+      loop: [operator-crds.yaml, tigera-operator.yaml]
+      when: tigera_operator.rc != 0
+
+    - name: CRD Installation
+      ansible.builtin.command: kubectl wait --for condition=established --timeout=120s crd/installations.operator.tigera.io
+      changed_when: false
+
+    - name: Installation Calico VXLAN
+      ansible.builtin.command: kubectl apply -f -
+      args:
+        stdin: |
+          apiVersion: operator.tigera.io/v1
+          kind: Installation
+          metadata:
+            name: default
+          spec:
+            calicoNetwork:
+              bgp: Disabled
+              ipPools:
+                - name: default-ipv4-ippool
+                  cidr: {{ pod_cidr }}
+                  encapsulation: VXLAN
+                  natOutgoing: Enabled
+                  nodeSelector: all()
+      register: installation
+      changed_when: "'unchanged' not in installation.stdout"
+
+    - name: Nœuds Ready
+      ansible.builtin.command: kubectl wait --for condition=Ready nodes --all --timeout=600s
+      changed_when: false
