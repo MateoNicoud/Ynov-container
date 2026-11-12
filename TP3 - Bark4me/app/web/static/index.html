@@ -18,11 +18,23 @@
 <symbol id="i-hotdog" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="22" width="52" height="22" rx="11"/><rect x="2" y="27" width="60" height="12" rx="6" fill="currentColor" fill-opacity=".18"/><path d="M14 33c3-3 6 3 9 0s6 3 9 0 6 3 9 0 6 3 9 0"/></g></symbol>
 </svg>
 
+<dialog class="intro-banner" data-intro aria-labelledby="intro-t" aria-describedby="intro-d">
+  <div class="intro-card">
+    <span class="logo-mark" aria-hidden="true"><svg><use href="#i-patte"/></svg></span>
+    <p class="eyebrow">Avant d'entrer</p>
+    <h2 id="intro-t">Site humoristique</h2>
+    <p id="intro-d">Bark4me est une parodie. Il présente un site pour éleveurs de chiens : des Profils, des Pédigrées, des Hotdogs, et rien de tout cela n'est réel.</p>
+    <button type="button" class="btn" data-intro-ok>J'ai compris</button>
+  </div>
+</dialog>
+
 <header class="app-header">
   <a class="logo" href="/"><span class="logo-mark"><svg aria-hidden="true"><use href="#i-patte"/></svg></span><span>bark<b>4</b>me</span></a>
   <div class="tabs" role="tablist" aria-label="Sections">
     <button type="button" class="tab" role="tab" id="tab-decouverte" aria-controls="panel-decouverte" aria-selected="true">Découverte</button>
+    <button type="button" class="tab" role="tab" id="tab-eleveurs" aria-controls="panel-eleveurs" aria-selected="false" tabindex="-1">Éleveurs</button>
   </div>
+  <button type="button" class="switch" role="switch" aria-checked="false" data-switch><span class="switch-track"><span class="switch-thumb"></span></span><span><span class="switch-label-long">Mode daltochien</span><span class="switch-label-short">Daltochien</span></span></button>
 </header>
 
 <main class="app">
@@ -37,10 +49,58 @@
       <p class="hint" data-hint hidden>Flèches du clavier : gauche Panneau, haut Truffe, droite Patte.</p>
       <p class="sr-only" role="status" data-status></p>
     </div>
-    <aside class="side">
+    <aside class="side" aria-label="Statistiques, Pédigrée et photos">
+      <section aria-labelledby="st-t">
+        <h2 id="st-t">Statistiques globales</h2>
+        <div class="stats" role="list" data-stats></div>
+      </section>
+      <section aria-labelledby="pv-t">
+        <h2 id="pv-t">Vérifier un Pédigrée</h2>
+        <form class="verify" data-verify>
+          <label for="pv-num">Numéro du Pédigrée</label>
+          <div class="row"><input id="pv-num" name="number" type="text" autocomplete="off" placeholder="BARK-0000" maxlength="9"><button class="btn" type="submit">Vérifier</button></div>
+          <div class="verify-result" role="status" data-verify-result></div>
+        </form>
+      </section>
+      <section class="carousel" data-carousel aria-roledescription="carrousel" aria-labelledby="car-t" hidden>
+        <h2 id="car-t">Les pensionnaires</h2>
+        <figure data-car-live aria-live="off"><img data-car-img alt="" width="800" height="1000"><figcaption data-car-cap></figcaption></figure>
+        <div class="controls">
+          <button type="button" class="btn btn--ghost" data-car-prev>Précédent</button>
+          <button type="button" class="btn btn--ghost" data-car-pause aria-pressed="false">Pause</button>
+          <button type="button" class="btn btn--ghost" data-car-next>Suivant</button>
+        </div>
+      </section>
     </aside>
   </section>
+
+  <section id="panel-eleveurs" class="panel eleveurs" role="tabpanel" aria-labelledby="tab-eleveurs" hidden>
+    <p class="parody" role="note"><strong>Page parodique.</strong> Cette page se moque de l'élevage canin. Les offres, les prix et les témoignages sont inventés, rien ne s'achète ici.</p>
+    <div class="hero">
+      <p class="eyebrow">Espace Éleveurs</p>
+      <h1>Votre lignée mérite un meilleur écran</h1>
+      <p>Bark4me aide les Éleveurs à transformer quatre générations de canapé en Pédigrée validé, en trois clics et sans le moindre contrôle.</p>
+    </div>
+    <h2>Nos offres (imaginaires)</h2>
+    <ul class="offers">
+      <li><h3>Pédigrée express</h3><p>Un numéro BARK-XXXX livré avant que votre chien ait fini sa gamelle.</p><p class="price">0 truffe, valeur nulle</p></li>
+      <li><h3>Photo flatteuse</h3><p>Nous prenons votre chien sous son meilleur angle, celui où il ne mâche pas la télécommande.</p><p class="price">2 Pattes par cliché</p></li>
+      <li><h3>Zéro Hotdog</h3><p>Nous garantissons qu'il restera toujours des Hotdogs dans votre région. Promesse non tenue.</p><p class="price">Sur devis fantaisiste</p></li>
+    </ul>
+    <h2>Ils nous font confiance (pas vraiment)</h2>
+    <blockquote><p>Mon bouledogue a obtenu un Pédigrée validé sans rien prouver. Je recommande, c'est de la satire.</p><cite>Un Éleveur imaginaire, Perpète-les-Croquettes</cite></blockquote>
+    <blockquote><p>Depuis Bark4me, mes chiots reniflent plus vite qu'ils ne grandissent. Aucune étude ne le confirme.</p><cite>Une Éleveuse inventée, canapé du fond</cite></blockquote>
+  </section>
 </main>
+<dialog class="cert-dialog" data-cert aria-labelledby="cert-t">
+  <h2 id="cert-t">Pédigrée <span data-cert-num></span></h2>
+  <img data-cert-img alt="" width="640" height="440">
+  <button type="button" class="btn" data-cert-close>Fermer</button>
+</dialog>
+<script src="nav.js"></script>
 <script src="app.js"></script>
+<script src="stats.js"></script>
+<script src="pedigree.js"></script>
+<script src="carousel.js"></script>
 </body>
 </html>

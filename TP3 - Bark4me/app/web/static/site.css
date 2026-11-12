@@ -44,3 +44,38 @@
 [hidden] { display: none !important; }
 .match-photos img { flex: none; height: auto; aspect-ratio: 4 / 5; max-width: 60%; }
 .match-photos { width: 100%; }
+
+/* Pédigrée, vérification, carrousel, Éleveurs */
+.badge--btn { cursor: pointer; font: inherit; font-weight: var(--fw-bold); }
+.badge--btn:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+.card-badge { pointer-events: none; } .card-badge .badge { pointer-events: auto; }
+.side { display: grid; gap: var(--sp-6); align-content: start; }
+.side h2 { font-size: var(--fs-lg); margin-bottom: var(--sp-3); }
+.verify { display: grid; gap: var(--sp-2); }
+.verify label { font-weight: var(--fw-medium); }
+.verify .row { display: flex; gap: var(--sp-2); }
+.verify input { flex: 1; min-width: 0; min-height: var(--target-min); padding: 0 var(--sp-4); border: 2px solid var(--c-line); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-ink); font: inherit; font-family: var(--font-mono); text-transform: uppercase; }
+.verify input:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+.verify-result { display: grid; gap: var(--sp-2); justify-items: start; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-surface-2); color: var(--c-ink); }
+.verify-result:empty { display: none; }
+.verify-result--ko { border-left: 4px solid var(--c-panneau-line); }
+.verify-result--ok { border-left: 4px solid var(--c-patte-line); }
+.cert-dialog { border: 0; border-radius: var(--r-lg); padding: var(--sp-4); width: min(100% - 2rem, 40rem); background: var(--c-surface); color: var(--c-ink); }
+.cert-dialog::backdrop { background: rgb(var(--c-shadow) / 0.72); }
+.cert-dialog img { width: 100%; height: auto; border-radius: var(--r-sm, 0.5rem); }
+.cert-dialog .btn { margin-top: var(--sp-3); }
+.carousel { display: grid; gap: var(--sp-2); }
+.carousel figure { margin: 0; display: grid; gap: var(--sp-2); }
+.carousel img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--r-md); background: var(--c-surface-2); }
+.carousel figcaption { font-size: var(--fs-sm); color: var(--c-ink-soft); }
+.carousel .controls { display: flex; gap: var(--sp-2); }
+.carousel .controls .btn { flex: 1; min-height: var(--target-min); }
+.eleveurs { display: grid; gap: var(--sp-5); max-width: 48rem; margin-inline: auto; }
+.parody { padding: var(--sp-4); border-radius: var(--r-md); border: 2px dashed var(--c-line); background: var(--c-badge-bg); color: var(--c-badge-ink); font-weight: var(--fw-medium); }
+.offers { display: grid; gap: var(--sp-3); list-style: none; margin: 0; padding: 0; }
+.offers li { padding: var(--sp-4); border-radius: var(--r-md); background: var(--c-surface); border: 1px solid var(--c-line-soft); }
+.offers h3 { font-size: var(--fs-lg); margin-bottom: var(--sp-1); }
+.offers .price { font-family: var(--font-mono); color: var(--c-ink-soft); font-size: var(--fs-sm); }
+.eleveurs blockquote { margin: 0; padding: var(--sp-3) var(--sp-4); border-left: 4px solid var(--c-brand); background: var(--c-surface-2); border-radius: var(--r-sm, 0.5rem); }
+.eleveurs blockquote cite { display: block; margin-top: var(--sp-1); font-size: var(--fs-sm); color: var(--c-ink-soft); font-style: normal; }
+@media (min-width: 640px) { .offers { grid-template-columns: repeat(3, 1fr); } }
