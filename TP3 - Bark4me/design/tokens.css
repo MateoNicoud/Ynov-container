@@ -1,0 +1,118 @@
+/* Bark4me : variables de conception.
+   Les mêmes noms existent dans les deux modes. Le Mode daltochien se
+   active avec <html data-mode="daltochien"> (ou sur n'importe quel
+   conteneur pour un aperçu). Aucune ressource externe. */
+
+:root,
+[data-mode="normal"] {
+  /* Couleurs, mode normal */
+  --c-bg: #FBF7F2;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F1EAE1;
+  --c-ink: #1D1A22;
+  --c-ink-soft: #5A5362;
+  --c-line: #8A8093;          /* bordures de composants (3:1 mini) */
+  --c-line-soft: #DDD3C7;     /* séparateurs décoratifs */
+  --c-brand: #C9301A;
+  --c-on-brand: #FFFFFF;
+  --c-patte: #157342;         /* fond au survol / actif */
+  --c-on-patte: #FFFFFF;
+  --c-patte-line: #157342;    /* trait et icône sur surface */
+  --c-truffe: #1B5CC0;
+  --c-on-truffe: #FFFFFF;
+  --c-truffe-line: #1B5CC0;
+  --c-panneau: #B8252D;
+  --c-on-panneau: #FFFFFF;
+  --c-panneau-line: #B8252D;
+  --c-focus: #1B5CC0;
+  --c-badge-bg: #FFF3D1;
+  --c-badge-ink: #5C4300;
+  --c-badge-line: #8A6400;
+  --c-match-a: #C9301A;
+  --c-match-b: #7A1E5A;
+  --c-on-match: #FFFFFF;
+  --c-disabled-bg: #ECE6DE;
+  --c-disabled-ink: #675F6F;
+  --c-shadow: 29 26 34;       /* triplet RGB utilisé dans les ombres */
+
+  /* Typographie : piles système, rien n'est téléchargé */
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.625rem;
+  --fs-2xl: 2.25rem;
+  --fs-3xl: 3.25rem;
+  --lh-tight: 1.15;
+  --lh-body: 1.5;
+  --fw-regular: 400;
+  --fw-medium: 600;
+  --fw-bold: 700;
+
+  /* Espacements (base 4 px) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4.5rem;
+
+  /* Rayons */
+  --r-sm: 0.5rem;
+  --r-md: 0.875rem;
+  --r-lg: 1.5rem;
+  --r-pill: 999px;
+
+  /* Ombres */
+  --sh-card: 0 1px 2px rgb(var(--c-shadow) / 0.10), 0 12px 32px -8px rgb(var(--c-shadow) / 0.28);
+  --sh-button: 0 1px 2px rgb(var(--c-shadow) / 0.14), 0 6px 14px -4px rgb(var(--c-shadow) / 0.22);
+  --sh-pop: 0 24px 64px -12px rgb(var(--c-shadow) / 0.45);
+
+  /* Cibles tactiles et mouvement */
+  --target-min: 2.75rem;      /* 44 px : minimum absolu */
+  --target-action: 4rem;      /* 64 px : boutons Patte, Truffe, Panneau */
+  --focus-ring: 3px;
+  --dur-fast: 120ms;
+  --dur: 280ms;
+  --dur-slow: 520ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Mode daltochien : bleus et jaunes uniquement. Les trois actions se
+   distinguent par la clarté (bleu moyen, jaune clair, ardoise sombre) et
+   par la forme de leur icône, jamais par la teinte seule. */
+[data-mode="daltochien"] {
+  --c-bg: #F4F7FC;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #E3EAF6;
+  --c-ink: #0F1B3D;
+  --c-ink-soft: #44527A;
+  --c-line: #6F7FA6;
+  --c-line-soft: #CBD5EA;
+  --c-brand: #1F4FB5;
+  --c-on-brand: #FFFFFF;
+  --c-patte: #1F4FB5;
+  --c-on-patte: #FFFFFF;
+  --c-patte-line: #1F4FB5;
+  --c-truffe: #F5C400;
+  --c-on-truffe: #0F1B3D;
+  --c-truffe-line: #7A5900;
+  --c-panneau: #2B3350;
+  --c-on-panneau: #FFFFFF;
+  --c-panneau-line: #2B3350;
+  --c-focus: #1F4FB5;
+  --c-badge-bg: #FFF3B8;
+  --c-badge-ink: #3D2F00;
+  --c-badge-line: #7A5900;
+  --c-match-a: #1F4FB5;
+  --c-match-b: #0F1B3D;
+  --c-on-match: #FFFFFF;
+  --c-disabled-bg: #E3EAF6;
+  --c-disabled-ink: #5A688C;
+  --c-shadow: 15 27 61;
+}

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" width="640" height="440" role="img" aria-labelledby="t d">
+  <title id="t">Certificat de pédigrée validé</title>
+  <desc id="d">Certificat BARK-XXXX pour NOM DU CHIEN, race, délivré par la Fédération canine imaginaire. Sans valeur légale.</desc>
+  <!-- Zones remplies par le service pedigree : #nom, #race, #numero, #date -->
+  <rect width="640" height="440" fill="#FBF3DF"/>
+  <rect x="14" y="14" width="612" height="412" fill="none" stroke="#7A1E3A" stroke-width="4"/>
+  <rect x="24" y="24" width="592" height="392" fill="none" stroke="#B08A2E" stroke-width="1.5"/>
+  <g fill="#B08A2E">
+    <circle cx="24" cy="24" r="6"/><circle cx="616" cy="24" r="6"/><circle cx="24" cy="416" r="6"/><circle cx="616" cy="416" r="6"/>
+  </g>
+  <g font-family="'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif" text-anchor="middle" fill="#2B1B22">
+    <text x="320" y="78" font-size="15" letter-spacing="4" fill="#7A1E3A">FÉDÉRATION CANINE IMAGINAIRE</text>
+    <text x="320" y="124" font-size="36" font-weight="700">Pédigrée validé</text>
+    <line x1="150" y1="142" x2="490" y2="142" stroke="#B08A2E" stroke-width="1.5"/>
+    <text x="320" y="176" font-size="14" font-style="italic" fill="#5A4A3A">Il est certifié que le chien</text>
+    <text id="nom" x="320" y="222" font-size="34" font-weight="700">NOM DU CHIEN</text>
+    <text id="race" x="320" y="252" font-size="18" fill="#5A4A3A">Race</text>
+    <text x="320" y="292" font-size="14" font-style="italic" fill="#5A4A3A">présente toutes les garanties de sérieux exigées d'un Profil.</text>
+  </g>
+  <g font-family="ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace" fill="#2B1B22">
+    <text x="60" y="372" font-size="12" fill="#5A4A3A">NUMÉRO</text>
+    <text id="numero" x="60" y="398" font-size="26" font-weight="700" letter-spacing="2">BARK-XXXX</text>
+    <text id="date" x="60" y="352" font-size="12" fill="#5A4A3A">JJ/MM/AAAA</text>
+  </g>
+  <text x="320" y="338" text-anchor="middle" font-family="system-ui,'Segoe UI',Roboto,Arial,sans-serif" font-size="11" fill="#5A4A3A">Document humoristique. Aucune valeur légale.</text>
+  <g transform="translate(540 340)">
+    <polygon points="50.0,0.0 43.7,4.9 48.7,11.1 41.5,14.5 45.0,21.7 37.3,23.4 39.1,31.2 31.1,31.1 31.2,39.1 23.4,37.3 21.7,45.0 14.5,41.5 11.1,48.7 4.9,43.7 0.0,50.0 -4.9,43.7 -11.1,48.7 -14.5,41.5 -21.7,45.0 -23.4,37.3 -31.2,39.1 -31.1,31.1 -39.1,31.2 -37.3,23.4 -45.0,21.7 -41.5,14.5 -48.7,11.1 -43.7,4.9 -50.0,0.0 -43.7,-4.9 -48.7,-11.1 -41.5,-14.5 -45.0,-21.7 -37.3,-23.4 -39.1,-31.2 -31.1,-31.1 -31.2,-39.1 -23.4,-37.3 -21.7,-45.0 -14.5,-41.5 -11.1,-48.7 -4.9,-43.7 -0.0,-50.0 4.9,-43.7 11.1,-48.7 14.5,-41.5 21.7,-45.0 23.4,-37.3 31.2,-39.1 31.1,-31.1 39.1,-31.2 37.3,-23.4 45.0,-21.7 41.5,-14.5 48.7,-11.1 43.7,-4.9" fill="#7A1E3A"/>
+    <circle r="36" fill="none" stroke="#F3D98B" stroke-width="2"/>
+    <g fill="#F3D98B" transform="translate(-16 -16) scale(1.33)"><path d="M12 11.2c-2.9 0-5.6 3.1-5.6 5.5 0 1.8 1.4 2.6 2.9 2.6 1 0 1.6-.4 2.7-.4s1.7.4 2.7.4c1.5 0 2.9-.8 2.9-2.6 0-2.4-2.7-5.5-5.6-5.5z"/><ellipse cx="5.2" cy="10.6" rx="1.9" ry="2.4" transform="rotate(-18 5.2 10.6)"/><ellipse cx="9.3" cy="6.2" rx="1.9" ry="2.5" transform="rotate(-6 9.3 6.2)"/><ellipse cx="14.7" cy="6.2" rx="1.9" ry="2.5" transform="rotate(6 14.7 6.2)"/><ellipse cx="18.8" cy="10.6" rx="1.9" ry="2.4" transform="rotate(18 18.8 10.6)"/></g>
+  </g>
+</svg>
