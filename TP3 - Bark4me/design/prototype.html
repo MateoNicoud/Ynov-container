@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bark4me</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="prototype.css">
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<symbol id="i-patte" viewBox="0 0 24 24"><g fill="currentColor"><path d="M12 11.2c-2.9 0-5.6 3.1-5.6 5.5 0 1.8 1.4 2.6 2.9 2.6 1 0 1.6-.4 2.7-.4s1.7.4 2.7.4c1.5 0 2.9-.8 2.9-2.6 0-2.4-2.7-5.5-5.6-5.5z"/><ellipse cx="5.2" cy="10.6" rx="1.9" ry="2.4" transform="rotate(-18 5.2 10.6)"/><ellipse cx="9.3" cy="6.2" rx="1.9" ry="2.5" transform="rotate(-6 9.3 6.2)"/><ellipse cx="14.7" cy="6.2" rx="1.9" ry="2.5" transform="rotate(6 14.7 6.2)"/><ellipse cx="18.8" cy="10.6" rx="1.9" ry="2.4" transform="rotate(18 18.8 10.6)"/></g></symbol>
+<symbol id="i-truffe" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M4 7.6C4 5.6 7.4 4 12 4s8 1.6 8 3.6c0 3.1-2.6 4.6-4.1 6.4-1.1 1.4-2 2.3-3.9 2.3s-2.8-.9-3.9-2.3C6.6 12.2 4 10.7 4 7.6zM7.4 8.6a1.5 2.2 0 1 0 3 0 1.5 2.2 0 1 0-3 0zM13.6 8.6a1.5 2.2 0 1 0 3 0 1.5 2.2 0 1 0-3 0z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 16.8v2.4M12 19.2c-1.2 1.1-3 1.1-4 0M12 19.2c1.2 1.1 3 1.1 4 0"/></symbol>
+<symbol id="i-panneau" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2" stroke-width="2"/><path stroke-width="1.7" d="M8.6 10.2 7 8.2c-.9 1.2-.9 3.4.4 4.6M15.4 10.2 17 8.2c.9 1.2.9 3.4-.4 4.6M8.6 10.2c0-1.3 1.4-2.1 3.4-2.1s3.4.8 3.4 2.1v2.6c0 2-1.5 3.4-3.4 3.4s-3.4-1.4-3.4-3.4z"/><path class="panneau-bar" stroke-width="4.6" d="M5.9 5.9l12.2 12.2"/><path stroke-width="2.2" d="M5.9 5.9l12.2 12.2"/></g></symbol>
+<symbol id="i-seal" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2.4 1.9 3-.2 1.1 2.8 2.6 1.5-.7 2.9 1 2.9-2.2 2.1-.4 3-3 .6L12 22l-2.4-1.9-3 .2-1.1-2.8-2.6-1.5.7-2.9-1-2.9 2.2-2.1.4-3 3-.6z"/><path fill="none" stroke="var(--c-badge-bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 12.3l2.8 2.8L16 9.6"/></symbol>
+<symbol id="i-hotdog" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="22" width="52" height="22" rx="11"/><rect x="2" y="27" width="60" height="12" rx="6" fill="currentColor" fill-opacity=".18"/><path d="M14 33c3-3 6 3 9 0s6 3 9 0 6 3 9 0 6 3 9 0"/></g></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 12 20 4l-4 16-4-6.5z M12 13.5 20 4"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></symbol>
+</svg>
+
+<dialog class="intro-banner" data-intro aria-labelledby="intro-t" aria-describedby="intro-d">
+  <div class="intro-card">
+    <span class="logo-mark" aria-hidden="true"><svg><use href="#i-patte"/></svg></span>
+    <p class="eyebrow">Avant d'entrer</p>
+    <h2 id="intro-t">Site humoristique</h2>
+    <p id="intro-d">Bark4me est une parodie. Il présente un site pour éleveurs de chiens : des Profils, des Pédigrées, des Hotdogs, et rien de tout cela n'est réel.</p>
+    <button type="button" class="btn" data-intro-ok>J'ai compris</button>
+  </div>
+</dialog>
+
+<header class="app-header">
+  <a class="logo" href="#"><span class="logo-mark"><svg aria-hidden="true"><use href="#i-patte"/></svg></span><span>bark<b>4</b>me</span></a>
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="tab" role="tab" id="tab-decouverte" aria-controls="panel-decouverte" aria-selected="true">Découverte</button>
+    <button type="button" class="tab" role="tab" id="tab-messagerie" aria-controls="panel-messagerie" aria-selected="false" tabindex="-1">Messagerie<span class="count" data-unread hidden></span></button>
+  </div>
+  <button type="button" class="switch" role="switch" aria-checked="false" data-switch><span class="switch-track"><span class="switch-thumb"></span></span><span><span class="switch-label-long">Mode daltochien</span><span class="switch-label-short">Daltochien</span></span></button>
+</header>
+
+<main class="app">
+  <section id="panel-decouverte" class="panel discover" role="tabpanel" aria-labelledby="tab-decouverte">
+    <div class="deck">
+      <div class="deck-slot" data-slot></div>
+      <div data-controls class="actions">
+        <div class="act"><button type="button" class="action action--panneau" aria-label="Panneau" data-act="panneau"><svg aria-hidden="true"><use href="#i-panneau"/></svg></button></div>
+        <div class="act"><button type="button" class="action action--truffe" aria-label="Truffe" data-act="truffe"><svg aria-hidden="true"><use href="#i-truffe"/></svg></button></div>
+        <div class="act"><button type="button" class="action action--patte" aria-label="Patte" data-act="patte"><svg aria-hidden="true"><use href="#i-patte"/></svg></button></div>
+      </div>
+      <p class="hint" data-hint>Flèches du clavier : gauche Panneau, haut Truffe, droite Patte.</p>
+    </div>
+    <aside class="side" aria-labelledby="st-t">
+      <h2 id="st-t">Statistiques globales</h2>
+      <div class="stats" role="list" data-stats></div>
+    </aside>
+  </section>
+
+  <section id="panel-messagerie" class="panel inbox" role="tabpanel" aria-labelledby="tab-messagerie" data-view="list" hidden>
+    <div class="threads">
+      <h2>Messagerie</h2>
+      <ul class="thread-list" data-threads></ul>
+      <p class="empty" data-empty>Aucun Match pour l'instant. Une Truffe en provoque toujours un, allez en Découverte.</p>
+    </div>
+    <div class="thread" data-thread hidden>
+      <div class="thread-head">
+        <button type="button" class="back" data-back aria-label="Retour aux conversations"><svg aria-hidden="true"><use href="#i-back"/></svg></button>
+        <span class="avatar" data-th-avatar></span>
+        <div><h3 data-th-name></h3><p data-th-breed></p></div>
+      </div>
+      <div class="log" role="log" aria-live="polite" data-log></div>
+      <form class="composer" data-form>
+        <label class="sr-only" for="msg">Votre message</label>
+        <input id="msg" name="msg" type="text" autocomplete="off" placeholder="Écrire un message" maxlength="200">
+        <button class="btn" type="submit"><svg aria-hidden="true" width="20" height="20"><use href="#i-send"/></svg>Envoyer</button>
+      </form>
+    </div>
+  </section>
+</main>
+<script src="prototype.js"></script>
+</body>
+</html>
