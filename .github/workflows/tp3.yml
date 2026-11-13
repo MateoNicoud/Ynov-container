@@ -43,7 +43,7 @@ jobs:
       # Images publiques, donc aucun imagePullSecret côté cluster. Un package GHCR créé par
       # ce workflow est privé par défaut : régler sa visibilité sur "Public" une fois dans
       # GitHub (Packages > bark4me-<service> > Package settings > Change visibility).
-      # Tag = SHA du commit.
+      # Tags : SHA du commit, et latest (référencé par les manifestes).
       - name: Push GHCR
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -51,3 +51,5 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
           docker tag "$LOCAL_TAG" "$image"
           docker push "$image"
+          docker tag "$LOCAL_TAG" "$REGISTRY/$owner/bark4me-${{ matrix.service }}:latest"
+          docker push "$REGISTRY/$owner/bark4me-${{ matrix.service }}:latest"
