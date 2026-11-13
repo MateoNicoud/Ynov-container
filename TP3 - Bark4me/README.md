@@ -57,8 +57,8 @@ kubectl get nodes
 
 1. **`make up`** crée le resource group `rg-tp3-bark4me`, le réseau, le Load Balancer, les 3 VM, l'arrêt du soir, et écrit `automatisation/inventory.yml`. Les versions de la plateforme viennent de `platform_versions` dans `tofu/variables.tf`. `make validate` vérifie la syntaxe et le format sans rien créer.
 2. **`make deploy`** enchaîne les playbooks de `site.yml`. Il est rejouable sans casse.
-3. **La CI** construit, scanne et publie les images, puis met à jour les Deployments (voir plus bas).
-4. **Les manifestes** de l'application s'appliquent à la main, depuis le poste, avec `KUBECONFIG` pointant sur `automatisation/kubeconfig` : `kubectl apply -k <dossier-des-manifestes>`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. Les Deployments doivent s'appeler `web`, `profiles`, `swipes`, `pedigree` et `photos` (le nom du service, sans préfixe), et leur conteneur porte le même nom. Seules les images gardent le préfixe : `ghcr.io/<owner>/bark4me-<service>`. Les scénarios et `group_vars/all.yml` (`app_services`) suivent cette convention ; les variables `K8S_NAMESPACE`, `DEPLOY_PREFIX` et `CONTAINER_PREFIX` en tête du workflow s'adaptent à d'autres noms (alors `APP_DEPLOYMENTS` côté scénarios).
+3. **La CI** construit, scanne et publie les images sur GHCR (voir plus bas). Elle ne déploie rien : les Deployments sont mis à jour à la main.
+4. **Les manifestes** de l'application s'appliquent à la main, depuis le poste, avec `KUBECONFIG` pointant sur `automatisation/kubeconfig` : `kubectl apply -k <dossier-des-manifestes>`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. Les Deployments doivent s'appeler `web`, `profiles`, `swipes`, `pedigree` et `photos` (le nom du service, sans préfixe), et leur conteneur porte le même nom. Seules les images gardent le préfixe : `ghcr.io/<owner>/bark4me-<service>`. Les scénarios et `group_vars/all.yml` (`app_services`) suivent cette convention (`APP_DEPLOYMENTS` côté scénarios s'adapte à d'autres noms).
 5. **`make check`** vérifie la plateforme puis l'application.
 
 | Playbook | Rôle |
@@ -89,24 +89,17 @@ Les contrôles, dans `automatisation/` :
 | Cluster kubeadm HA, CNI, Helm | automatisé | `make deploy` |
 | Traefik, cert-manager, metrics-server, Longhorn | automatisé | `make deploy` |
 | Build, scan Trivy et push des images | automatisé | CI, à chaque push sur `main` touchant `app/` |
-| Mise à jour des images des Deployments | automatisé | CI, `kubectl set image` puis `rollout status` |
 | ClusterIssuer cert-manager | manuel | écrit à la main, le playbook 07 n'en crée aucun |
 | Manifestes de l'application et de Postgres | manuel | `kubectl apply -k` |
 | Secret GitHub, visibilité publique des packages GHCR | manuel | interface GitHub |
 | Scénarios de panne | manuel | `make scenario-*` |
 | Destruction | manuel | `make down` |
 
-La CI ne fait jamais de `kubectl apply` : elle ne touche qu'à l'image d'un Deployment qui existe déjà. Le premier push sur `main` échoue donc tant que les manifestes ne sont pas appliqués.
+La CI ne touche jamais au cluster : elle s'arrête au push des images sur GHCR.
 
 ## Secrets GitHub
 
-Un seul secret est à créer, dans Settings, Secrets and variables, Actions :
-
-| Secret | Valeur |
-|---|---|
-| `KUBECONFIG_B64` | `base64 -w0 automatisation/kubeconfig` |
-
-Le push vers GHCR utilise le `GITHUB_TOKEN` fourni par GitHub. Les images sont publiques pour éviter tout `imagePullSecret` : un package créé par le workflow est privé au départ, il faut passer sa visibilité sur Public une fois (Packages, `bark4me-<service>`, Package settings, Change visibility). Le job `deploy` joint l'apiserver sur `lb_fqdn:6443` depuis les runners GitHub, dont les adresses ne sont pas connues d'avance : un `admin_cidr` restreint à votre IP bloque la livraison (la règle NSG du port 6443 ne laisse alors passer que cette IP). Le job `deploy` écrit le kubeconfig dans un fichier temporaire en `umask 077`, ne l'affiche pas et le supprime à la fin.
+Aucun secret à créer. Le push vers GHCR utilise le `GITHUB_TOKEN` fourni par GitHub. Les images sont publiques pour éviter tout `imagePullSecret` : un package créé par le workflow est privé au départ, il faut passer sa visibilité sur Public une fois (Packages, `bark4me-<service>`, Package settings, Change visibility).
 
 ## Scénarios de démo
 
@@ -135,12 +128,9 @@ puis `make up`. Le cluster tient avec 2 vCPU et 8 Go par nœud, avec moins de ma
 
 ## Arrêt du soir
 
-Les VM s'arrêtent seules chaque soir :
+Les VM s'arrêtent seules chaque soir à 20 h, heure de Paris. Le planning d'arrêt Azure (DevTest Labs) n'est pas disponible en `spaincentral`, la région utilisée avec l'abonnement Azure for Students : `01-nodes.yml` pose donc un cron qui appelle l'API `deallocate` avec l'identité managée de la VM (heures dans `deallocate_hour` et `deallocate_minute` de `group_vars/all.yml`).
 
-- Azure les désalloue à 20 h, heure de Paris (`shutdown_time = "2000"` et `shutdown_timezone` dans `tofu/variables.tf`).
-- `01-nodes.yml` pose en plus un cron à 20 h 05 qui appelle l'API `deallocate` avec l'identité managée de la VM, au cas où l'arrêt Azure ne désallouerait pas (heures dans `deallocate_hour` et `deallocate_minute` de `group_vars/all.yml`).
-
-Le cron de 20 h 05 coupe aussi une VM rallumée avant cette heure (par exemple pour une démo qui déborde) : prévoir de la rallumer ou d'ajuster `deallocate_hour` et `deallocate_minute`.
+Le cron coupe aussi une VM rallumée avant cette heure (par exemple pour une démo qui déborde) : prévoir de la rallumer ou d'ajuster `deallocate_hour` et `deallocate_minute`.
 
 Après cette heure, rallumer avant de diagnostiquer quoi que ce soit :
 
