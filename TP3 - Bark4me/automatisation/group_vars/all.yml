@@ -1,0 +1,31 @@
+# Les versions viennent de l'inventaire généré par tofu (variable platform_versions).
+k8s_minor: v1.34
+calico_version: "{{ versions.calico }}"
+helm_version: "{{ versions.helm }}"
+traefik_chart_version: "{{ versions.traefik_chart }}"
+cert_manager_version: "{{ versions.cert_manager }}"
+metrics_server_chart_version: "{{ versions.metrics_server }}"
+longhorn_version: "{{ versions.longhorn }}"
+pod_cidr: 10.244.0.0/16
+service_cidr: 10.96.0.0/12
+kubeconfig: /etc/kubernetes/admin.conf
+deallocate_hour: "20"
+deallocate_minute: "5"
+postgres_storage_class: longhorn-postgres
+
+# Application et scénarios : valeurs par défaut, surchargeables par variable d'environnement
+# (APP_NAMESPACE, APP_FQDN) ou par -e. Les scripts de scenarios/ lisent les mêmes variables.
+app_namespace: "{{ lookup('env', 'APP_NAMESPACE') | default('bark4me', true) }}"
+app_fqdn: "{{ lookup('env', 'APP_FQDN') | default(lb_fqdn, true) }}"
+# Deployments nommés comme les services (sans préfixe) ; images ghcr.io/<owner>/bark4me-<service>.
+app_services: [web, profiles, swipes, pedigree, photos]
+postgres_statefulset: postgres
+# Une URL par service exposé par l'Ingress, qui répond 200 quand l'application tourne.
+# Les scénarios (scenarios/lib.sh : PROBE_PATHS et PROBE_PATHS_PG) reprennent ces chemins, répartis
+# selon qu'ils dépendent de Postgres (/api/*) ou non (/ et /photos/*).
+app_https_checks:
+  - { path: /, service: web }
+  - { path: /api/profiles, service: profiles }
+  - { path: /api/swipes/stats, service: swipes }
+  - { path: /api/pedigree, service: pedigree }
+  - { path: /photos/chien-01.jpg, service: photos }

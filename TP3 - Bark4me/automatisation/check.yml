@@ -1,0 +1,3 @@
+# Plateforme puis application. check-platform.yml seul fonctionne sans l'application déployée.
+- ansible.builtin.import_playbook: check-platform.yml
+- ansible.builtin.import_playbook: check-app.yml

@@ -1,0 +1,44 @@
+- name: HAProxy local vers les apiservers
+  hosts: k8s_nodes
+  become: true
+  handlers:
+    - name: Restart haproxy
+      ansible.builtin.systemd_service:
+        name: haproxy
+        state: restarted
+  tasks:
+    - name: HAProxy
+      ansible.builtin.apt:
+        name: haproxy
+
+    - name: Configuration
+      ansible.builtin.copy:
+        dest: /etc/haproxy/haproxy.cfg
+        content: |
+          global
+              log /dev/log local0
+
+          defaults
+              mode tcp
+              log global
+              timeout connect 5s
+              timeout client 1h
+              timeout server 1h
+
+          frontend apiserver
+              bind 127.0.0.1:8443
+              default_backend apiserver
+
+          backend apiserver
+              option tcp-check
+              balance roundrobin
+          {% for host in groups['k8s_nodes'] %}
+              server {{ host }} {{ hostvars[host].private_ip }}:6443 check fall 2 rise 2 inter 2s
+          {% endfor %}
+      notify: Restart haproxy
+
+    - name: Service
+      ansible.builtin.systemd_service:
+        name: haproxy
+        enabled: true
+        state: started

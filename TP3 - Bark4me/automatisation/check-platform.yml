@@ -1,0 +1,106 @@
+- name: Plateforme Bark4me
+  hosts: k8s_first
+  become: true
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Nœuds
+      ansible.builtin.command: kubectl get nodes --no-headers
+      register: nodes
+      changed_when: false
+
+    - name: 3 nœuds Ready
+      ansible.builtin.assert:
+        that: nodes.stdout_lines | select('search', ' Ready ') | list | length == 3
+        fail_msg: "{{ nodes.stdout_lines }}"
+
+    - name: Membres etcd
+      ansible.builtin.command: >-
+        kubectl -n kube-system exec etcd-{{ inventory_hostname }} --
+        etcdctl --endpoints=https://127.0.0.1:2379
+        --cacert=/etc/kubernetes/pki/etcd/ca.crt
+        --cert=/etc/kubernetes/pki/etcd/server.crt
+        --key=/etc/kubernetes/pki/etcd/server.key
+        member list
+      register: members
+      changed_when: false
+
+    - name: 3 membres etcd started
+      ansible.builtin.assert:
+        that: members.stdout_lines | select('search', ', started, ') | list | length == 3
+        fail_msg: "{{ members.stdout_lines }}"
+
+    - name: Pods hors Running/Succeeded
+      ansible.builtin.command: >-
+        kubectl get pods -A --no-headers
+        --field-selector=status.phase!=Running,status.phase!=Succeeded
+      register: all_bad_pods
+      changed_when: false
+
+    - name: Pods hors Running/Succeeded de la plateforme (hors namespace de l'application)
+      ansible.builtin.set_fact:
+        bad_pods:
+          stdout_lines: "{{ all_bad_pods.stdout_lines | reject('match', '^' ~ app_namespace ~ ' ') | list }}"
+
+    - name: Tous les pods sont Running
+      ansible.builtin.assert:
+        that: bad_pods.stdout_lines | length == 0
+        fail_msg: "{{ bad_pods.stdout_lines }}"
+
+    - name: Workloads des addons prêts
+      ansible.builtin.command: kubectl -n {{ item.ns }} rollout status {{ item.kind }}/{{ item.name }} --timeout=30s
+      loop:
+        - { ns: traefik, kind: deployment, name: traefik }
+        - { ns: cert-manager, kind: deployment, name: cert-manager }
+        - { ns: cert-manager, kind: deployment, name: cert-manager-webhook }
+        - { ns: cert-manager, kind: deployment, name: cert-manager-cainjector }
+        - { ns: kube-system, kind: deployment, name: metrics-server }
+        - { ns: longhorn-system, kind: deployment, name: longhorn-driver-deployer }
+        - { ns: longhorn-system, kind: daemonset, name: longhorn-manager }
+      loop_control:
+        label: "{{ item.ns }}/{{ item.name }}"
+      changed_when: false
+
+    - name: Service Traefik en NodePort
+      ansible.builtin.command: kubectl -n traefik get svc traefik -o jsonpath={.spec.type}:{.spec.ports[*].nodePort}
+      register: traefik_svc
+      changed_when: false
+
+    - name: Traefik expose les NodePort 30080 et 30443 attendus par le Load Balancer
+      ansible.builtin.assert:
+        that:
+          - traefik_svc.stdout.startswith('NodePort:')
+          - "'30080' in traefik_svc.stdout"
+          - "'30443' in traefik_svc.stdout"
+        fail_msg: "{{ traefik_svc.stdout }}"
+
+    - name: API metrics-server
+      ansible.builtin.command: kubectl top nodes --no-headers
+      register: top
+      changed_when: false
+      retries: 6
+      delay: 10
+      until: top.rc == 0
+
+    - name: StorageClass Postgres
+      ansible.builtin.command: >-
+        kubectl get storageclass {{ postgres_storage_class }}
+        -o jsonpath={.provisioner}:{.parameters.numberOfReplicas}
+      register: pg_sc
+      changed_when: false
+
+    - name: StorageClass Postgres à 3 réplicas
+      ansible.builtin.assert:
+        that: pg_sc.stdout == 'driver.longhorn.io:3'
+        fail_msg: "{{ pg_sc.stdout }}"
+
+    - name: Réplicas de la StorageClass par défaut
+      ansible.builtin.command: kubectl get storageclass longhorn -o jsonpath={.parameters.numberOfReplicas}
+      register: default_sc
+      changed_when: false
+
+    - name: Longhorn à 2 réplicas par défaut
+      ansible.builtin.assert:
+        that: default_sc.stdout == '2'
+        fail_msg: "{{ default_sc.stdout }}"

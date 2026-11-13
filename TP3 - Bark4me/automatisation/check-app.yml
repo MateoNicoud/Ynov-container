@@ -1,0 +1,54 @@
+- name: Application Bark4me (PVC et Certificate)
+  hosts: k8s_first
+  become: true
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  tasks:
+    - name: Phase de chaque PVC
+      ansible.builtin.command: >-
+        kubectl -n {{ app_namespace }} get pvc
+        -o jsonpath='{range .items[*]}{.metadata.name}={.status.phase}{"\n"}{end}'
+      register: pvc
+      changed_when: false
+
+    - name: Au moins un PVC, tous Bound
+      ansible.builtin.assert:
+        that:
+          - pvc.stdout_lines | length > 0
+          - pvc.stdout_lines | reject('search', '=Bound$') | list | length == 0
+        fail_msg: "{{ pvc.stdout_lines }}"
+
+    - name: Condition Ready de chaque Certificate
+      ansible.builtin.command: >-
+        kubectl -n {{ app_namespace }} get certificate
+        -o jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+      register: cert
+      changed_when: false
+
+    - name: Au moins un Certificate, tous Ready
+      ansible.builtin.assert:
+        that:
+          - cert.stdout_lines | length > 0
+          - cert.stdout_lines | reject('search', '=True$') | list | length == 0
+        fail_msg: "{{ cert.stdout_lines }}"
+
+- name: Réponse HTTPS valide sur chaque chemin
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: HTTPS avec certificat vérifié
+      ansible.builtin.uri:
+        url: "https://{{ app_fqdn }}{{ item.path }}"
+        validate_certs: true
+        timeout: 5
+        status_code: 200
+      loop: "{{ app_https_checks }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: https
+      retries: 6
+      delay: 5
+      until: https.status == 200
+      changed_when: false

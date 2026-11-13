@@ -1,0 +1,101 @@
+name: tp3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "TP3 - Bark4me/app/**"
+      - ".github/workflows/tp3.yml"
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  # Doivent correspondre aux manifestes de l'étudiant : namespace, nom du Deployment et nom
+  # du conteneur de chaque service sont <préfixe><service> (par défaut sans préfixe : web ;
+  # DEPLOY_PREFIX=bark4me- donnerait bark4me-web). Adapter si les manifestes nomment les objets autrement.
+  K8S_NAMESPACE: bark4me
+  DEPLOY_PREFIX: ""
+  CONTAINER_PREFIX: ""
+
+jobs:
+  # Job de build. Le job `deploy` plus bas en dépend via `needs: build-scan-push`.
+  build-scan-push:
+    runs-on: ubuntu-latest
+    # packages: write est limité à ce job, pour le push GHCR.
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [web, profiles, swipes, pedigree, photos]
+    env:
+      LOCAL_TAG: bark4me-${{ matrix.service }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Build
+        run: docker build -t "$LOCAL_TAG" "TP3 - Bark4me/app/${{ matrix.service }}"
+
+      # Le scan passe avant tout push : une HIGH/CRITICAL corrigeable bloque la publication.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.LOCAL_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Images publiques, donc aucun imagePullSecret côté cluster. Un package GHCR créé par
+      # ce workflow est privé par défaut : régler sa visibilité sur "Public" une fois dans
+      # GitHub (Packages > bark4me-<service> > Package settings > Change visibility).
+      # Tag = SHA du commit.
+      - name: Push GHCR
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="$REGISTRY/$owner/bark4me-${{ matrix.service }}:${{ github.sha }}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+          docker tag "$LOCAL_TAG" "$image"
+          docker push "$image"
+
+  # Livraison : met à jour les images des Deployments existants. Aucun manifeste n'est
+  # modifié ni appliqué (pas de kubectl apply).
+  # Secret GitHub requis : KUBECONFIG_B64 = kubeconfig du cluster encodé en base64
+  # (base64 -w0 ~/.kube/config), à créer dans Settings > Secrets and variables > Actions.
+  deploy:
+    needs: build-scan-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      KUBECONFIG: ${{ runner.temp }}/kubeconfig
+    steps:
+      # Le secret passe par une variable d'environnement (jamais interpolé dans le script),
+      # et le fichier n'est jamais affiché.
+      - name: Écrire le kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          set +x
+          umask 077
+          printf '%s' "$KUBECONFIG_B64" | base64 -d > "$KUBECONFIG"
+
+      - name: Mettre à jour les images
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for service in web profiles swipes pedigree photos; do
+            kubectl -n "$K8S_NAMESPACE" set image "deployment/${DEPLOY_PREFIX}${service}" \
+              "${CONTAINER_PREFIX}${service}=$REGISTRY/$owner/bark4me-${service}:${{ github.sha }}"
+          done
+
+      - name: Attendre les déploiements
+        run: |
+          for service in web profiles swipes pedigree photos; do
+            kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${DEPLOY_PREFIX}${service}" --timeout=300s
+          done
+
+      - name: Supprimer le kubeconfig
+        if: always()
+        run: rm -f "$KUBECONFIG"
