@@ -15,3 +15,5 @@ CLAUDE.md
 ansible.log
 tfplan
 azure.auto.tfvars
+docs/agents/
+TP3 - Bark4me/tofu/terraform.tfvars

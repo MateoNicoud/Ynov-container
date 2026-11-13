@@ -1,0 +1,21 @@
+# Un seul FQDN, routage par chemin. À adapter : <dns_label>.<location>.cloudapp.azure.com (tofu).
+# Le même FQDN apparaît dans certificate.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bark4me
+  namespace: bark4me
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [tp2-k8s-ynov.spaincentral.cloudapp.azure.com]
+      secretName: bark4me-tls
+  rules:
+    - host: tp2-k8s-ynov.spaincentral.cloudapp.azure.com
+      http:
+        paths:
+          - { path: /api/profiles, pathType: Prefix, backend: { service: { name: profiles, port: { number: 8080 } } } }
+          - { path: /api/swipes, pathType: Prefix, backend: { service: { name: swipes, port: { number: 8080 } } } }
+          - { path: /api/pedigree, pathType: Prefix, backend: { service: { name: pedigree, port: { number: 8080 } } } }
+          - { path: /photos, pathType: Prefix, backend: { service: { name: photos, port: { number: 8080 } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 8080 } } } }

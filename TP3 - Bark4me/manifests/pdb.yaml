@@ -1,0 +1,50 @@
+# Pas de PDB sur postgres : une seule réplique, minAvailable: 1 bloquerait tout drain du nœud qui la porte.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  namespace: bark4me
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: web }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: profiles
+  namespace: bark4me
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: profiles }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: swipes
+  namespace: bark4me
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: swipes }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pedigree
+  namespace: bark4me
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: pedigree }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: photos
+  namespace: bark4me
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: photos }

@@ -1,0 +1,289 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profiles
+  namespace: bark4me
+  labels: { app: profiles }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: profiles }
+  template:
+    metadata:
+      labels: { app: profiles }
+    spec:
+      serviceAccountName: bark4me
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: profiles
+          image: ghcr.io/mateonicoud/bark4me-profiles:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: PG_USER, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_USER } } }
+            - { name: PG_PASSWORD, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_PASSWORD } } }
+            - { name: PG_DB, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_DB } } }
+            - name: DATABASE_URL
+              value: postgres://$(PG_USER):$(PG_PASSWORD)@postgres:5432/$(PG_DB)
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profiles
+  namespace: bark4me
+  labels: { app: profiles }
+spec:
+  selector: { app: profiles }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swipes
+  namespace: bark4me
+  labels: { app: swipes }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: swipes }
+  template:
+    metadata:
+      labels: { app: swipes }
+    spec:
+      serviceAccountName: bark4me
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: swipes
+          image: ghcr.io/mateonicoud/bark4me-swipes:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: PG_USER, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_USER } } }
+            - { name: PG_PASSWORD, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_PASSWORD } } }
+            - { name: PG_DB, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_DB } } }
+            - name: DATABASE_URL
+              value: postgres://$(PG_USER):$(PG_PASSWORD)@postgres:5432/$(PG_DB)
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swipes
+  namespace: bark4me
+  labels: { app: swipes }
+spec:
+  selector: { app: swipes }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pedigree
+  namespace: bark4me
+  labels: { app: pedigree }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: pedigree }
+  template:
+    metadata:
+      labels: { app: pedigree }
+    spec:
+      serviceAccountName: bark4me
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: pedigree
+          image: ghcr.io/mateonicoud/bark4me-pedigree:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: PG_USER, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_USER } } }
+            - { name: PG_PASSWORD, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_PASSWORD } } }
+            - { name: PG_DB, valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_DB } } }
+            - name: DATABASE_URL
+              value: postgres://$(PG_USER):$(PG_PASSWORD)@postgres:5432/$(PG_DB)
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pedigree
+  namespace: bark4me
+  labels: { app: pedigree }
+spec:
+  selector: { app: pedigree }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: bark4me
+  labels: { app: web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      serviceAccountName: bark4me
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          image: ghcr.io/mateonicoud/bark4me-web:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 16Mi }
+            limits: { memory: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: bark4me
+  labels: { app: web }
+spec:
+  selector: { app: web }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+# Volume ReadWriteMany (Longhorn, via NFS share-manager) partagé par tous les réplicas de photos.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: photos
+  namespace: bark4me
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: longhorn
+  resources:
+    requests: { storage: 1Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photos
+  namespace: bark4me
+  labels: { app: photos }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: photos }
+  template:
+    metadata:
+      labels: { app: photos }
+    spec:
+      serviceAccountName: bark4me
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        # Copie les photos livrées dans l'image vers le volume partagé (idempotent).
+        - name: init
+          image: ghcr.io/mateonicoud/bark4me-photos:latest
+          args: ["init"]
+          volumeMounts:
+            - { name: photos, mountPath: /data }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+      containers:
+        - name: photos
+          image: ghcr.io/mateonicoud/bark4me-photos:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          volumeMounts:
+            - { name: photos, mountPath: /data }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      volumes:
+        - name: photos
+          persistentVolumeClaim: { claimName: photos }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: photos
+  namespace: bark4me
+  labels: { app: photos }
+spec:
+  selector: { app: photos }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
