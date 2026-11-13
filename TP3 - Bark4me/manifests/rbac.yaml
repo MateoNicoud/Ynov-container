@@ -1,0 +1,35 @@
+# Compte de service commun aux pods applicatifs : aucun jeton d'API monté, aucun droit.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bark4me
+  namespace: bark4me
+automountServiceAccountToken: false
+---
+# Rôle de lecture seule pour l'exploitation du namespace (étudiant, scénarios de panne).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bark4me-lecteur
+  namespace: bark4me
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, persistentvolumeclaims, events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bark4me-lecteur
+  namespace: bark4me
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bark4me-lecteur
+subjects:
+  - kind: ServiceAccount
+    name: bark4me
+    namespace: bark4me
