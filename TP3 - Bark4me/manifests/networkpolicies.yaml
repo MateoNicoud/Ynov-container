@@ -1,0 +1,81 @@
+# Default-deny entrant et sortant sur tout le namespace, puis flux légitimes uniquement.
+# Calico applique ces règles. Traefik tourne dans le namespace traefik.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: bark4me
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# DNS vers kube-dns.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: autoriser-dns
+  namespace: bark4me
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Traefik vers les 5 services (port 8080).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: traefik-vers-services
+  namespace: bark4me
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: [web, profiles, swipes, pedigree, photos] }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: traefik }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Services avec base vers Postgres : sortie côté services, entrée côté Postgres.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: services-vers-postgres
+  namespace: bark4me
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: [profiles, swipes, pedigree] }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: { matchLabels: { app: postgres } }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-depuis-services
+  namespace: bark4me
+spec:
+  podSelector:
+    matchLabels: { app: postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: app, operator: In, values: [profiles, swipes, pedigree] }
+      ports:
+        - { protocol: TCP, port: 5432 }
