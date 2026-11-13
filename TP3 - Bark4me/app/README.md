@@ -25,6 +25,6 @@ Chaque service Go a ses tests `httptest` (stockage en mémoire, pas de Postgres)
 
 ```bash
 for s in profiles swipes pedigree photos; do
-  docker run --rm -v "$PWD/$s":/src -w /src golang:1.25-alpine go test ./...
+  docker run --rm -v "$PWD/$s":/src -w /src golang:1.26-alpine go test ./...
 done
 ```
