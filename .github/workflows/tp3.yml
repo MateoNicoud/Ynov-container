@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-scan-push:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ynov]
     # packages: write est limité à ce job, pour le push GHCR.
     permissions:
       contents: read
