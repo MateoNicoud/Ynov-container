@@ -35,17 +35,6 @@ variable "dns_label" {
   type = string
 }
 
-variable "shutdown_time" {
-  type        = string
-  default     = "2000"
-  description = "Heure d'arrêt automatique des VM (HHMM)."
-}
-
-variable "shutdown_timezone" {
-  type    = string
-  default = "Romance Standard Time"
-}
-
 variable "longhorn_disk_size_gb" {
   type    = number
   default = 20

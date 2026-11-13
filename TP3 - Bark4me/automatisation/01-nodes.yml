@@ -151,7 +151,7 @@
           id=$(curl -s -H Metadata:true "$imds/instance/compute/resourceId?api-version=2021-02-01&format=text")
           curl -s -X POST -H "Authorization: Bearer $token" -H "Content-Length: 0" "https://management.azure.com$id/deallocate?api-version=2024-07-01"
 
-    - name: Désallocation après l'arrêt automatique Azure
+    - name: Désallocation quotidienne
       ansible.builtin.cron:
         name: deallocate
         hour: "{{ deallocate_hour }}"

@@ -234,19 +234,6 @@ resource "azurerm_role_assignment" "self_stop" {
   principal_id         = azurerm_linux_virtual_machine.nodes[each.key].identity[0].principal_id
 }
 
-resource "azurerm_dev_test_global_vm_shutdown_schedule" "nodes" {
-  for_each              = local.nodes
-  virtual_machine_id    = azurerm_linux_virtual_machine.nodes[each.key].id
-  location              = azurerm_resource_group.tp3.location
-  enabled               = true
-  daily_recurrence_time = var.shutdown_time
-  timezone              = var.shutdown_timezone
-
-  notification_settings {
-    enabled = false
-  }
-}
-
 resource "local_file" "inventory" {
   filename        = "${path.module}/../automatisation/inventory.yml"
   file_permission = "0644"

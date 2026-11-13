@@ -10,7 +10,7 @@ pod_cidr: 10.244.0.0/16
 service_cidr: 10.96.0.0/12
 kubeconfig: /etc/kubernetes/admin.conf
 deallocate_hour: "20"
-deallocate_minute: "5"
+deallocate_minute: "0"
 postgres_storage_class: longhorn-postgres
 
 # Application et scénarios : valeurs par défaut, surchargeables par variable d'environnement
