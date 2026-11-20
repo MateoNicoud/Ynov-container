@@ -58,7 +58,7 @@ kubectl get nodes
 1. **`make up`** crée le resource group `rg-tp3-bark4me`, le réseau, le Load Balancer, les 3 VM, l'arrêt du soir, et écrit `automatisation/inventory.yml`. Les versions de la plateforme viennent de `platform_versions` dans `tofu/variables.tf`. `make validate` vérifie la syntaxe et le format sans rien créer.
 2. **`make deploy`** enchaîne les playbooks de `site.yml`. Il est rejouable sans casse.
 3. **La CI** construit, scanne et publie les images sur GHCR (voir plus bas). Elle ne déploie rien : les Deployments sont mis à jour à la main.
-4. **Les manifestes** de l'application s'appliquent à la main, depuis le poste, avec `KUBECONFIG` pointant sur `automatisation/kubeconfig` : `kubectl apply -k <dossier-des-manifestes>`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. Les Deployments doivent s'appeler `web`, `profiles`, `swipes`, `pedigree` et `photos` (le nom du service, sans préfixe), et leur conteneur porte le même nom. Seules les images gardent le préfixe : `ghcr.io/<owner>/bark4me-<service>`. Les scénarios et `group_vars/all.yml` (`app_services`) suivent cette convention (`APP_DEPLOYMENTS` côté scénarios s'adapte à d'autres noms).
+4. **Les manifestes** de l'application (dossier `manifests/`, ClusterIssuer compris) sont appliqués par `09-app.yml`, inclus dans `make deploy` : copie sur k8s-1, `kubectl apply -k`, puis attente de Postgres et des 5 Deployments. `make deploy-app` rejoue cette étape seule, `make redeploy-app` redémarre en plus les Deployments pour récupérer les nouvelles images `:latest`. À la main, depuis le poste : `kubectl apply -k manifests/` avec `KUBECONFIG` sur `automatisation/kubeconfig`. Le namespace, les Deployments, le StatefulSet Postgres et le ClusterIssuer sont à écrire. Les Deployments doivent s'appeler `web`, `profiles`, `swipes`, `pedigree` et `photos` (le nom du service, sans préfixe), et leur conteneur porte le même nom. Seules les images gardent le préfixe : `ghcr.io/<owner>/bark4me-<service>`. Les scénarios et `group_vars/all.yml` (`app_services`) suivent cette convention (`APP_DEPLOYMENTS` côté scénarios s'adapte à d'autres noms).
 5. **`make check`** vérifie la plateforme puis l'application.
 
 | Playbook | Rôle |
@@ -70,6 +70,7 @@ kubectl get nodes
 | `05-helm.yml` | Helm sur k8s-1 |
 | `07-ingress.yml` | Traefik, cert-manager (contrôleur et CRD seulement), metrics-server |
 | `08-storage.yml` | Longhorn |
+| `09-app.yml` | manifestes Bark4me (ClusterIssuer, Postgres, services, Ingress, Certificate) |
 
 Les contrôles, dans `automatisation/` :
 
@@ -89,8 +90,7 @@ Les contrôles, dans `automatisation/` :
 | Cluster kubeadm HA, CNI, Helm | automatisé | `make deploy` |
 | Traefik, cert-manager, metrics-server, Longhorn | automatisé | `make deploy` |
 | Build, scan Trivy et push des images | automatisé | CI, à chaque push sur `main` touchant `app/` |
-| ClusterIssuer cert-manager | manuel | écrit à la main, le playbook 07 n'en crée aucun |
-| Manifestes de l'application et de Postgres | manuel | `kubectl apply -k` |
+| ClusterIssuer, manifestes de l'application et de Postgres | automatisé | `make deploy` ou `make deploy-app` (`09-app.yml`) |
 | Secret GitHub, visibilité publique des packages GHCR | manuel | interface GitHub |
 | Scénarios de panne | manuel | `make scenario-*` |
 | Destruction | manuel | `make down` |

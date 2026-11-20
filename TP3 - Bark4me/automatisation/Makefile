@@ -1,7 +1,7 @@
 VENV := .venv
 PLAYBOOK := $(VENV)/bin/ansible-playbook
 
-.PHONY: install deploy check check-platform check-app syntax scenarios scenario-drain scenario-node-stop scenario-longhorn scenario-postgres
+.PHONY: install deploy deploy-app redeploy-app check check-platform check-app syntax scenarios scenario-drain scenario-node-stop scenario-longhorn scenario-postgres
 
 install:
 	uv venv $(VENV)
@@ -10,6 +10,13 @@ install:
 
 deploy:
 	$(PLAYBOOK) site.yml
+
+# Application seule (manifestes). redeploy-app force le téléchargement des images :latest.
+deploy-app:
+	$(PLAYBOOK) 09-app.yml
+
+redeploy-app:
+	$(PLAYBOOK) 09-app.yml -e app_restart=true
 
 # check = plateforme + application. check-platform marche sans l'application déployée.
 check:
@@ -23,6 +30,7 @@ check-app:
 
 syntax:
 	$(PLAYBOOK) site.yml --syntax-check
+	$(PLAYBOOK) 09-app.yml --syntax-check
 	$(PLAYBOOK) check.yml --syntax-check
 
 # Scénarios de panne : chacun sonde le site pendant la panne et vérifie le retour à la normale.

@@ -1,0 +1,52 @@
+# Application Bark4me : copie des manifestes sur k8s-1 puis kubectl apply -k (kustomize intégré).
+# Rejouable. Pour forcer le téléchargement de nouvelles images :latest : -e app_restart=true
+- name: Application Bark4me (manifestes, ClusterIssuer, Postgres, services)
+  hosts: k8s_first
+  become: true
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  vars:
+    app_manifests_dir: /opt/bark4me/manifests
+    app_restart: false
+  tasks:
+    - name: Dossier des manifestes sur k8s-1
+      ansible.builtin.file:
+        path: "{{ app_manifests_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copie des manifestes
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../manifests/"
+        dest: "{{ app_manifests_dir }}/"
+        mode: "0644"
+
+    - name: Attendre le webhook de cert-manager
+      ansible.builtin.command: >-
+        kubectl -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
+      changed_when: false
+
+    - name: kubectl apply -k
+      ansible.builtin.command: kubectl apply -k {{ app_manifests_dir }}
+      register: apply
+      changed_when: "'configured' in apply.stdout or 'created' in apply.stdout"
+      retries: 5
+      delay: 10
+      until: apply.rc == 0
+
+    - name: Redémarrage des Deployments (nouvelles images latest)
+      ansible.builtin.command: >-
+        kubectl -n {{ app_namespace }} rollout restart deployment/{{ item }}
+      loop: "{{ app_services }}"
+      when: app_restart | bool
+
+    - name: Postgres prêt
+      ansible.builtin.command: >-
+        kubectl -n {{ app_namespace }} rollout status statefulset/{{ postgres_statefulset }} --timeout=600s
+      changed_when: false
+
+    - name: Deployments prêts
+      ansible.builtin.command: >-
+        kubectl -n {{ app_namespace }} rollout status deployment/{{ item }} --timeout=600s
+      loop: "{{ app_services }}"
+      changed_when: false
