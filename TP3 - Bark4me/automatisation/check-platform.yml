@@ -51,7 +51,7 @@
     - name: Workloads des addons prêts
       ansible.builtin.command: kubectl -n {{ item.ns }} rollout status {{ item.kind }}/{{ item.name }} --timeout=30s
       loop:
-        - { ns: traefik, kind: deployment, name: traefik }
+        - { ns: traefik, kind: daemonset, name: traefik }
         - { ns: cert-manager, kind: deployment, name: cert-manager }
         - { ns: cert-manager, kind: deployment, name: cert-manager-webhook }
         - { ns: cert-manager, kind: deployment, name: cert-manager-cainjector }

@@ -28,13 +28,14 @@ log "volume $VOL (PVC $PG_PVC), $WANTED réplicas attendus"
 VICTIM="$(replicas | awk '{print $1}')"
 
 wait_site 60
+run kubectl -n "$LH_NS" get replicas.longhorn.io -l "longhornvolume=$VOL" -o wide
 probe_start
 
 log "suppression du réplica $VICTIM"
-kubectl -n "$LH_NS" delete replicas.longhorn.io "$VICTIM" --wait=false || fail "suppression du réplica en échec"
+run kubectl -n "$LH_NS" delete replicas.longhorn.io "$VICTIM" --wait=false || fail "suppression du réplica en échec"
 
 wait_until "$RECOVERY_TIMEOUT" "volume $VOL de nouveau healthy avec $WANTED réplicas" rebuilt
-log "réplicas : $(replicas)"
+run kubectl -n "$LH_NS" get replicas.longhorn.io -l "longhornvolume=$VOL" -o wide
 
 probe_stop
 verify_recovery

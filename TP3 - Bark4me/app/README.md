@@ -8,7 +8,7 @@ Cinq services et un Postgres, lancés en local avec Docker Compose.
 | `profiles` | les 10 Profils du Paquet (`/api/profiles`) |
 | `swipes` | Swipes, règle de Match, statistiques (`/api/swipes`) |
 | `pedigree` | Pédigrée BARK-XXXX, vérification, certificat SVG (`/api/pedigree`) |
-| `photos` | images des chiens depuis un volume partagé (`/photos`) ; `photos init` y copie les photos livrées |
+| `photos` | images des chiens depuis un volume (`/photos`, un emptyDir par pod sous Kubernetes) ; `photos init` y copie les photos livrées |
 
 ## Lancer
 

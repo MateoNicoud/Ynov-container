@@ -211,18 +211,6 @@ spec:
   ports:
     - { name: http, port: 8080, targetPort: http }
 ---
-# Volume ReadWriteMany (Longhorn, via NFS share-manager) partagé par tous les réplicas de photos.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: photos
-  namespace: bark4me
-spec:
-  accessModes: [ReadWriteMany]
-  storageClassName: longhorn
-  resources:
-    requests: { storage: 1Gi }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -243,7 +231,7 @@ spec:
         fsGroup: 65532
         seccompProfile: { type: RuntimeDefault }
       initContainers:
-        # Copie les photos livrées dans l'image vers le volume partagé (idempotent).
+        # Copie les photos livrées dans l'image vers le volume du pod (idempotent).
         - name: init
           image: ghcr.io/mateonicoud/bark4me-photos:latest
           args: ["init"]
@@ -259,9 +247,13 @@ spec:
             - { name: http, containerPort: 8080 }
           volumeMounts:
             - { name: photos, mountPath: /data }
+          # Le volume RWX (NFS) se fige quelques secondes quand Longhorn bascule : on laisse 3 s par essai
+          # et 6 échecs avant de retirer le pod du service.
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
           livenessProbe:
             httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 5
@@ -274,8 +266,10 @@ spec:
             requests: { cpu: 25m, memory: 16Mi }
             limits: { memory: 64Mi }
       volumes:
+        # Les photos sont en lecture seule : chaque réplica a sa copie (emptyDir), remplie par l'init container.
+        # Pas de volume partagé, donc pas de point de défaillance unique quand un nœud tombe.
         - name: photos
-          persistentVolumeClaim: { claimName: photos }
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -15,14 +15,22 @@
         create_namespace: true
         wait: true
         values:
+          # Un Traefik par nœud + externalTrafficPolicy Local : le Load Balancer ne parle qu'aux nœuds qui
+          # ont un Traefik local, et retire un nœud mort en quelques secondes (sonde TCP) sans dépendre
+          # du retrait des endpoints par Kubernetes (~40 s).
           deployment:
-            replicas: 2
+            kind: DaemonSet
+          updateStrategy:
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 0
           ingressClass:
             enabled: true
             isDefaultClass: true
           service:
             spec:
               type: NodePort
+              externalTrafficPolicy: Local
           ports:
             web:
               nodePort: 30080

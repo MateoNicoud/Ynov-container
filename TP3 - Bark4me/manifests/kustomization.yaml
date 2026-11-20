@@ -11,6 +11,8 @@ resources:
   - hpa.yaml
   - pdb.yaml
   - networkpolicies.yaml
+patches:
+  - path: resilience.yaml
 # Tag initial : la CI publie ghcr.io/<owner>/bark4me-<service>:<sha> et met ensuite à jour
 # les Deployments. Fixer ici un SHA existant pour le premier apply.
 images:

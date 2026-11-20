@@ -38,12 +38,20 @@ AZ_RESOURCE_GROUP="${AZ_RESOURCE_GROUP:-rg-tp3-bark4me}"
 RECOVERY_TIMEOUT="${RECOVERY_TIMEOUT:-900}"
 
 PROBE_PID=""
-PROBE_LOG=""
-PROBE_LOG_PG=""
+PROBE_DIR=""
+PROBE_FILES=()
+PROBE_PATH_LIST=()
+PROBE_TOLS=()
 CLEANUP_CMDS=()
 
 log() { printf '%s \033[1;36m%s\033[0m\n' "$(date +%T)" "$*"; }
 fail() { printf '%s \033[1;31mECHEC : %s\033[0m\n' "$(date +%T)" "$*" >&2; exit 1; }
+# Affiche une commande telle qu'elle est lancée (présentation : on voit ce qui tourne).
+cmd() { printf '%s \033[1;33m$ %s\033[0m\n' "$(date +%T)" "$*"; }
+# run <commande...> : affiche la commande, puis l'exécute avec sa sortie visible.
+run() { cmd "$*"; "$@"; }
+# Indente la sortie d'une commande lancée en arrière-plan ou en boucle.
+indent() { sed 's/^/    /'; }
 
 resolve_fqdn() {
   if [ -n "${APP_FQDN:-}" ]; then return; fi
@@ -62,10 +70,10 @@ on_exit() {
   [ -n "$PROBE_PID" ] && kill $PROBE_PID 2>/dev/null
   local i
   for ((i = ${#CLEANUP_CMDS[@]} - 1; i >= 0; i--)); do
-    log "nettoyage : ${CLEANUP_CMDS[$i]}"
+    cmd "nettoyage : ${CLEANUP_CMDS[$i]}"
     eval "${CLEANUP_CMDS[$i]}" || true
   done
-  [ -n "$PROBE_LOG" ] && rm -f "$PROBE_LOG" "$PROBE_LOG_PG"
+  [ -n "$PROBE_DIR" ] && rm -rf "$PROBE_DIR"
   exit "$rc"
 }
 trap on_exit EXIT
@@ -80,6 +88,7 @@ init() {
   [ -f "$KUBECONFIG" ] || fail "kubeconfig introuvable : $KUBECONFIG"
   resolve_fqdn
   log "site https://$APP_FQDN, namespace $APP_NAMESPACE"
+  run kubectl get nodes -o wide
 }
 
 # Une sonde = tous les chemins donnés répondent 2xx en HTTPS, certificat vérifié.
@@ -96,89 +105,140 @@ site_ok() {
   paths_ok $PROBE_PATHS $PROBE_PATHS_PG
 }
 
-wait_site() {
-  local deadline=$((SECONDS + ${1:-120}))
-  until site_ok; do
-    [ "$SECONDS" -lt "$deadline" ] || fail "le site ne répond pas"
-    sleep 2
+# Commande de sonde, affichée telle quelle.
+probe_curl() { curl -fsS -o /dev/null --max-time 3 "https://$APP_FQDN$1"; }
+
+# État du site (code HTTP par chemin), affiché pour la présentation.
+site_status() {
+  local p
+  # shellcheck disable=SC2086
+  for p in $PROBE_PATHS $PROBE_PATHS_PG; do
+    cmd "curl -sS -o /dev/null -w 'HTTP %{http_code}' --max-time 3 https://$APP_FQDN$p"
+    curl -sS -o /dev/null -w '    HTTP %{http_code} en %{time_total}s\n' --max-time 3 "https://$APP_FQDN$p" || true
   done
 }
 
-# Deux sondes en continu : chemins sans Postgres (tolérance stricte) et chemins Postgres (tolérance large).
-probe_start() {
-  PROBE_LOG="$(mktemp)"
-  PROBE_LOG_PG="$(mktemp)"
-  (
-    while true; do
-      # shellcheck disable=SC2086
-      if paths_ok $PROBE_PATHS; then echo "$(date +%T) OK"; else echo "$(date +%T) KO"; fi
-      sleep "$PROBE_INTERVAL"
-    done
-  ) >"$PROBE_LOG" &
-  PROBE_PID=$!
-  (
-    while true; do
-      # shellcheck disable=SC2086
-      if paths_ok $PROBE_PATHS_PG; then echo "$(date +%T) OK"; else echo "$(date +%T) KO"; fi
-      sleep "$PROBE_INTERVAL"
-    done
-  ) >"$PROBE_LOG_PG" &
-  PROBE_PID="$PROBE_PID $!"
-  log "sondes lancées sur : $PROBE_PATHS (tolérance $PROBE_TOLERANCE) et $PROBE_PATHS_PG (tolérance $PROBE_PG_TOLERANCE)"
+wait_site() {
+  local deadline=$((SECONDS + ${1:-120}))
+  log "attente : le site répond sur tous les chemins"
+  until site_ok; do
+    [ "$SECONDS" -lt "$deadline" ] || { site_status; fail "le site ne répond pas"; }
+    sleep 2
+  done
+  site_status
 }
 
-# probe_report <journal> <tolérance> <libellé> : échoue si la plus longue série de sondes ratées dépasse la tolérance.
+# Une sonde par chemin, en continu : chaque chemin a son journal, sa tolérance et ses messages.
+# Les changements d'état (OK/KO + erreur curl) sont affichés en direct.
+probe_loop() { # <chemin> <journal>
+  local state="" now err
+  while true; do
+    if err=$(probe_curl "$1" 2>&1); then now=OK; else now=KO; fi
+    echo "$(date +%T) $now" >>"$2"
+    if [ "$now" != "$state" ]; then
+      if [ "$now" = OK ]; then
+        printf '%s \033[1;32msonde %s : OK\033[0m\n' "$(date +%T)" "$1"
+      else
+        printf '%s \033[1;31msonde %s : KO (%s)\033[0m\n' "$(date +%T)" "$1" "${err:-sans message}"
+      fi
+      state=$now
+    fi
+    sleep "$PROBE_INTERVAL"
+  done
+}
+
+probe_start() {
+  PROBE_DIR="$(mktemp -d)"
+  local p i=0 pids=()
+  # shellcheck disable=SC2086
+  for p in $PROBE_PATHS $PROBE_PATHS_PG; do
+    PROBE_PATH_LIST+=("$p")
+    PROBE_FILES+=("$PROBE_DIR/$i.log")
+    case " $PROBE_PATHS " in *" $p "*) PROBE_TOLS+=("$PROBE_TOLERANCE") ;; *) PROBE_TOLS+=("$PROBE_PG_TOLERANCE") ;; esac
+    i=$((i + 1))
+  done
+  cmd "curl -fsS -o /dev/null --max-time 3 https://$APP_FQDN<chemin>   (1 sonde par chemin, toutes les ${PROBE_INTERVAL}s)"
+  for i in "${!PROBE_PATH_LIST[@]}"; do
+    probe_loop "${PROBE_PATH_LIST[$i]}" "${PROBE_FILES[$i]}" &
+    pids+=($!)
+    log "sonde ${PROBE_PATH_LIST[$i]} (tolérance ${PROBE_TOLS[$i]} échecs consécutifs)"
+  done
+  PROBE_PID="${pids[*]}"
+}
+
+# probe_report <journal> <tolérance> <chemin> : affiche le bilan, renvoie 1 si la tolérance est dépassée.
 probe_report() {
   local total ko worst
   total=$(wc -l <"$1")
   ko=$(grep -c ' KO$' "$1")
   worst=$(awk '/ KO$/ { n++; if (n > m) m = n; next } { n = 0 } END { print m + 0 }' "$1")
-  log "sonde $3 : $total mesures, $ko ratées, plus longue série ratée : $worst (tolérance $2)"
+  log "bilan $3 : $total mesures, $ko ratées, plus longue série ratée : $worst (tolérance $2)"
   if [ "$worst" -gt "$2" ]; then
-    grep ' KO$' "$1" | head -3
-    fail "$3 : le site a cessé de répondre ($worst sondes consécutives ratées)"
+    grep ' KO$' "$1" | head -3 | indent
+    return 1
   fi
 }
 
-# Arrête les sondes et vérifie les deux tolérances.
+# Arrête les sondes et vérifie la tolérance de chaque chemin.
 probe_stop() {
-  local pid
+  local pid i bad=()
   for pid in $PROBE_PID; do
     kill "$pid" 2>/dev/null
     wait "$pid" 2>/dev/null
   done
   PROBE_PID=""
-  probe_report "$PROBE_LOG" "$PROBE_TOLERANCE" "sans Postgres"
-  probe_report "$PROBE_LOG_PG" "$PROBE_PG_TOLERANCE" "avec Postgres"
+  for i in "${!PROBE_PATH_LIST[@]}"; do
+    probe_report "${PROBE_FILES[$i]}" "${PROBE_TOLS[$i]}" "${PROBE_PATH_LIST[$i]}" || bad+=("${PROBE_PATH_LIST[$i]}")
+  done
+  [ "${#bad[@]}" -eq 0 ] || fail "tolérance dépassée sur : ${bad[*]}"
 }
 
 # Attente générique : wait_until <secondes> <description> <commande...>
+# La commande est affichée une fois ; sa sortie l'est à chaque changement.
 wait_until() {
   local timeout=$1 what=$2
   shift 2
-  local deadline=$((SECONDS + timeout))
+  local deadline=$((SECONDS + timeout)) out last="" shown
   log "attente : $what"
-  until "$@" >/dev/null 2>&1; do
+  if [ "$1" = bash ] && [ "$2" = -c ]; then shown="$(printf '%s' "$3" | sed -e 's/^[[:space:]]*//' -e '/^$/d' | paste -sd';' - | sed 's/;/; /g')"; else shown="$*"; fi
+  cmd "$shown"
+  until out="$("$@" 2>&1)"; do
+    if [ "$out" != "$last" ]; then
+      [ -z "$out" ] || printf '%s\n' "$out" | indent
+      last="$out"
+    fi
     [ "$SECONDS" -lt "$deadline" ] || fail "délai dépassé : $what"
     sleep 5
   done
+  [ -z "$out" ] || [ "$out" = "$last" ] || printf '%s\n' "$out" | indent
 }
 
 node_of_postgres() {
   kubectl -n "$APP_NAMESPACE" get pod "${PG_STATEFULSET}-0" -o jsonpath='{.spec.nodeName}'
 }
 
+# Tous les pods du cluster Running et prêts.
+wait_cluster_ready() {
+  wait_until "$RECOVERY_TIMEOUT" "tous les pods du cluster prêts" bash -c "
+    bad=\$(kubectl get pods -A --no-headers | awk '\$4 != \"Completed\" { split(\$3, r, \"/\"); if (\$4 != \"Running\" || r[1] != r[2]) print }')
+    printf '%s' \"\$bad\"
+    [ -z \"\$bad\" ]"
+}
+
 # Retour à la normale : nœuds, workloads, site, puis make check.
 verify_recovery() {
   log "vérification du retour à la normale"
-  kubectl wait --for=condition=Ready nodes --all --timeout="${RECOVERY_TIMEOUT}s" || fail "nœuds non Ready"
+  run kubectl wait --for=condition=Ready nodes --all --timeout="${RECOVERY_TIMEOUT}s" || fail "nœuds non Ready"
   local d
   for d in $APP_DEPLOYMENTS; do
-    kubectl -n "$APP_NAMESPACE" rollout status "deployment/$d" --timeout="${RECOVERY_TIMEOUT}s" || fail "deployment/$d non prêt"
+    run kubectl -n "$APP_NAMESPACE" rollout status "deployment/$d" --timeout="${RECOVERY_TIMEOUT}s" || fail "deployment/$d non prêt"
   done
-  kubectl -n "$APP_NAMESPACE" rollout status "statefulset/$PG_STATEFULSET" --timeout="${RECOVERY_TIMEOUT}s" || fail "statefulset/$PG_STATEFULSET non prêt"
+  run kubectl -n "$APP_NAMESPACE" rollout status "statefulset/$PG_STATEFULSET" --timeout="${RECOVERY_TIMEOUT}s" || fail "statefulset/$PG_STATEFULSET non prêt"
+  wait_cluster_ready
   wait_site 120
+  run kubectl -n "$APP_NAMESPACE" get pods -o wide
   if [ "${SKIP_MAKE_CHECK:-0}" != 1 ]; then
+    cmd "make -C automatisation check"
     APP_NAMESPACE="$APP_NAMESPACE" APP_FQDN="$APP_FQDN" make -C "$AUTO_DIR" check || fail "make check en échec"
   fi
   log "retour à la normale confirmé"
