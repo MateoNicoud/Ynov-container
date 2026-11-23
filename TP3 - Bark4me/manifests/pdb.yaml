@@ -1,4 +1,3 @@
-# Pas de PDB sur postgres : une seule réplique, minAvailable: 1 bloquerait tout drain du nœud qui la porte.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

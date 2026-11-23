@@ -1,8 +1,8 @@
-# Glossaire Bark4me
+# Glossaire du Projet fil rouge
 
 Langage du domaine du faux site de rencontre pour chiens. Aucun détail d'implémentation ici.
 
-**Bark4me** : le faux site de rencontre pour chiens. Satire, sans authentification.
+**Projet fil rouge** : le faux site de rencontre pour chiens. Satire, sans authentification.
 
 **Profil** : la fiche d'un chien affichée sur une carte à swiper (nom, race, phrase d'accroche, photo, pédigrée éventuel).
 

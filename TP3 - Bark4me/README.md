@@ -1,12 +1,12 @@
-# TP3 : Bark4me sur un cluster kubeadm HA, Azure
+# TP3 : Projet fil rouge sur un cluster kubeadm HA, Azure
 
-Bark4me est le faux site de rencontre pour chiens décrit dans `GLOSSARY.md`. Le TP3 le fait tourner sur le même type de cluster que le TP2 : 3 VM Azure créées par OpenTofu (`tofu/`), configurées par Ansible (`automatisation/`), avec l'application dans `app/` et sa livraison par GitHub Actions (`.github/workflows/tp3.yml` à la racine du dépôt).
+Le Projet fil rouge est le faux site de rencontre pour chiens décrit dans `GLOSSARY.md`. Le TP3 le fait tourner sur le même type de cluster que le TP2 : 3 VM Azure créées par OpenTofu (`tofu/`), configurées par Ansible (`automatisation/`), avec l'application dans `app/` et sa livraison par GitHub Actions (`.github/workflows/tp3.yml` à la racine du dépôt).
 
 Ce dépôt fournit la plateforme, l'application et la CI. Les manifestes Kubernetes de l'application (Deployments, Services, Ingress, Postgres, NetworkPolicy, PodDisruptionBudgets, Certificate...) ne sont pas fournis : on les écrit à la main.
 
 Glossaire utilisé dans tout le document :
 
-**Bark4me** : le faux site de rencontre pour chiens. Satire, sans authentification.
+**Projet fil rouge** : le faux site de rencontre pour chiens. Satire, sans authentification.
 
 **Profil** : la fiche d'un chien affichée sur une carte à swiper (nom, race, phrase d'accroche, photo, pédigrée éventuel).
 
@@ -38,7 +38,21 @@ Glossaire utilisé dans tout le document :
 - `tofu` (OpenTofu 1.10 ou plus), `uv`, `make`, `kubectl`
 - `tofu/azure.auto.tfvars` (gitignoré), copié depuis `azure.auto.tfvars.example`, avec le subscription ID et le tenant ID (`az account show --query "{id:id, tenant:tenantId}"`)
 - `tofu/terraform.tfvars`, copié depuis `terraform.tfvars.example`, avec le `dns_label` et la clé SSH publique de chaque membre
-- Docker, pour lancer l'application en local (voir `app/README.md`)
+- Docker, pour lancer l'application en local (voir « En local avec Docker Compose »)
+
+## En local avec Docker Compose
+
+Le dossier `compose/` contient un `docker-compose.yml` qui lance tout le Projet fil rouge sur le poste, sans cluster : Postgres, les services `profiles`, `swipes`, `pedigree`, `photos` et `web`, plus une passerelle nginx qui reproduit le routage par chemin de l'Ingress. Les images se construisent depuis `app/`.
+
+```bash
+cd "TP3 - Bark4me/compose"
+docker compose up --build
+docker compose down -v
+```
+
+Le site répond sur http://localhost:8080. `down -v` supprime aussi les volumes `pgdata` et `photos`. Au premier démarrage, `photos-init` copie les photos livrées dans l'image vers le volume partagé, puis `photos` démarre.
+
+Les identifiants de Postgres (`bark4me` / `bark4me`) sont ceux de `manifests/postgres.yaml`.
 
 ## Déroulé
 
@@ -70,7 +84,7 @@ kubectl get nodes
 | `05-helm.yml` | Helm sur k8s-1 |
 | `07-ingress.yml` | Traefik, cert-manager (contrôleur et CRD seulement), metrics-server |
 | `08-storage.yml` | Longhorn |
-| `09-app.yml` | manifestes Bark4me (ClusterIssuer, Postgres, services, Ingress, Certificate) |
+| `09-app.yml` | manifestes de l'application (ClusterIssuer, Postgres, services, Ingress, Certificate) |
 
 Les contrôles, dans `automatisation/` :
 

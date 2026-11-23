@@ -1,5 +1,3 @@
-# Un seul FQDN, routage par chemin. À adapter : <dns_label>.<location>.cloudapp.azure.com (tofu).
-# Le même FQDN apparaît dans certificate.yaml.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

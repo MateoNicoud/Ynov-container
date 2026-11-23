@@ -1,4 +1,3 @@
-# kubectl apply -k manifests/   (le namespace d'abord, puis le reste ; le ClusterIssuer est global)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -13,8 +12,6 @@ resources:
   - networkpolicies.yaml
 patches:
   - path: resilience.yaml
-# Tag initial : la CI publie ghcr.io/<owner>/bark4me-<service>:<sha> et met ensuite à jour
-# les Deployments. Fixer ici un SHA existant pour le premier apply.
 images:
   - { name: ghcr.io/mateonicoud/bark4me-web, newTag: latest }
   - { name: ghcr.io/mateonicoud/bark4me-profiles, newTag: latest }

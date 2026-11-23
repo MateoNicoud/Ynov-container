@@ -1,5 +1,3 @@
-# Default-deny entrant et sortant sur tout le namespace, puis flux légitimes uniquement.
-# Calico applique ces règles. Traefik tourne dans le namespace traefik.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,7 +7,6 @@ spec:
   podSelector: {}
   policyTypes: [Ingress, Egress]
 ---
-# DNS vers kube-dns.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -28,7 +25,6 @@ spec:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
 ---
-# Traefik vers les 5 services (port 8080).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -46,7 +42,6 @@ spec:
       ports:
         - { protocol: TCP, port: 8080 }
 ---
-# Services avec base vers Postgres : sortie côté services, entrée côté Postgres.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -80,7 +75,6 @@ spec:
       ports:
         - { protocol: TCP, port: 5432 }
 ---
-# Pods temporaires HTTP-01 de cert-manager : Traefik doit pouvoir les joindre pour la validation Let's Encrypt.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

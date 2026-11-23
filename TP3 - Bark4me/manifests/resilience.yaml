@@ -1,5 +1,3 @@
-# Patchs de résilience (référencés par kustomization.yaml) : réplicas répartis sur des nœuds différents
-# et éviction rapide des pods d'un nœud arrêté.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,7 +14,6 @@ spec:
           labelSelector:
             matchLabels: { app: web }
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
 ---
@@ -35,7 +32,6 @@ spec:
           labelSelector:
             matchLabels: { app: profiles }
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
 ---
@@ -54,7 +50,6 @@ spec:
           labelSelector:
             matchLabels: { app: swipes }
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
 ---
@@ -73,7 +68,6 @@ spec:
           labelSelector:
             matchLabels: { app: pedigree }
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
 ---
@@ -92,7 +86,6 @@ spec:
           labelSelector:
             matchLabels: { app: photos }
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
 ---
@@ -105,6 +98,5 @@ spec:
   template:
     spec:
       tolerations:
-        # Éviction après 30 s sur un nœud perdu (300 s par défaut) : le site reprend vite après un arrêt brutal.
         - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
         - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }

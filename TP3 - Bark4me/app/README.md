@@ -1,4 +1,4 @@
-# Application Bark4me
+# Application du Projet fil rouge
 
 Cinq services et un Postgres, lancés en local avec Docker Compose.
 
@@ -13,9 +13,12 @@ Cinq services et un Postgres, lancés en local avec Docker Compose.
 ## Lancer
 
 ```bash
-docker compose up --build     # puis http://localhost:8080
-docker compose down -v        # tout supprimer, volumes compris
+cd ../compose
+docker compose up --build
+docker compose down -v
 ```
+
+Le site répond sur http://localhost:8080, `down -v` supprime les volumes.
 
 La passerelle `gateway` reproduit le routage par chemin de l'Ingress du cluster.
 
